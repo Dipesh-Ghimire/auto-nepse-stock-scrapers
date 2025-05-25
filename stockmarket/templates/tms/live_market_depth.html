@@ -10,6 +10,12 @@
             }
         </style>
         <h2>📈 Live Market Depth (Top Buyer & Seller)</h2>
+        <div style="margin: 1rem 0;">
+            <button class="btn btn-primary" id="start" onclick="startFetching()">▶️</button>
+            <button class="btn btn-secondary" id="stop" onclick="stopFetching()" disabled>⏹️</button>
+            <span id="fetch-status" style="margin-left: 1rem; font-weight: bold;">Status: OFF</span>
+        </div>
+
     
         <table class="table table-bordered table-striped">
             <thead>
@@ -20,6 +26,7 @@
                     <th>Top Sell Price</th>
                     <th>Sell Qty</th>
                     <th>Price Diff</th>
+                    <th>Place Order</th>
                 </tr>
             </thead>
             <tbody id="depth-table-body">
@@ -28,9 +35,10 @@
         </table>
     
         <script>
+            window.fetchInterval = null;
             async function fetchLiveDepth() {
                 try {
-                    const response = await fetch("/api/live-depth/");
+                    const response = await fetch("/api/live-depth/?scrape=true");
                     let data = await response.json();
     
                     const table = document.getElementById("depth-table-body");
@@ -50,6 +58,10 @@
                             <td class="text-updated">${depth.top_seller.price}</td>
                             <td>${depth.top_seller.quantity}</td>
                             <td>${depth.top_price_diff.toFixed(2)}</td>
+                            <td>
+                                <button class="btn btn-success action-btn" onclick="placeOrder('${symbol}', ${depth.top_seller.price}, ${depth.top_seller.quantity}, 'Buy')">BUY</button>
+                                <button class="btn btn-danger action-btn" onclick="placeOrder('${symbol}', ${depth.top_buyer.price}, ${depth.top_buyer.quantity}, 'Sell')">SELL</button>
+                            </td>
                         `;
                         table.appendChild(row);
                     }
@@ -64,9 +76,54 @@
                     table.innerHTML = "<tr><td colspan='6'>Error fetching data.</td></tr>";
                 }
             }
-    
-            // Refresh every 10 seconds
-            setInterval(fetchLiveDepth, 10000);
-            fetchLiveDepth(); // Initial load
+            async function placeOrder(symbol, price, quantity, transaction_type) {
+                try {
+                    const response = await fetch("/api/place-order/", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            script_name: symbol,
+                            price: 714.2,
+                            quantity: 10,
+                            transaction_type: transaction_type
+                            }),
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        alert(`Order placed successfully: ${transaction_type} ${quantity} of ${symbol} at ${price}`);
+                    } else {
+                        alert(`Trade failed: ${result.error}`);
+                    }
+                } catch (error) {
+                    console.error("Error executing trade:", error);
+                    alert("Error executing trade. Please try again.");
+                }
+            }
+            
+
+            function startFetching() {
+                if (!window.fetchInterval) {
+                    fetchLiveDepth(); // Fetch immediately
+                    window.fetchInterval = setInterval(fetchLiveDepth, 20000);
+                    console.log("Fetching started");
+                    document.getElementById("fetch-status").innerText = "Status: ON";
+                    document.getElementById("start").disabled = true;
+                    document.getElementById("stop").disabled = false;
+                }
+            }
+
+            function stopFetching() {
+                if (window.fetchInterval) {
+                    clearInterval(window.fetchInterval);
+                    window.fetchInterval = null;
+                    console.log("Fetching stopped");
+                    document.getElementById("fetch-status").innerText = "Status: OFF";
+                    document.getElementById("start").disabled = false;
+                    document.getElementById("stop").disabled = true;
+                }
+            }
+
         </script>
     {% endblock %}
