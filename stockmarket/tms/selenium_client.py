@@ -7,6 +7,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
+from selenium.common.exceptions import StaleElementReferenceException
 import time
 import logging
 logger = logging.getLogger("stocks")
@@ -42,6 +43,7 @@ class SeleniumTMSClient:
         self.password = password
 
     def submit_login(self, captcha_text):
+        self.driver.find_element(By.XPATH, "//input[@placeholder='Client Code/ User Name']").clear()
         self.driver.find_element(By.XPATH, "//input[@placeholder='Client Code/ User Name']").send_keys(self.username)
         self.driver.find_element(By.XPATH, "//input[@placeholder='Password']").send_keys(self.password)
         self.driver.find_element(By.ID, "captchaEnter").send_keys(captcha_text)
@@ -422,8 +424,8 @@ class SeleniumTMSClient:
         try:
             if transaction not in ('Buy', 'Sell'):
                 raise ValueError("Transaction must be either 'Buy' or 'Sell'")
-            self.order_url += f"?symbol={script_name}&transaction={transaction}"
-            self.driver.get(self.order_url)
+            url = self.order_url+f"?symbol={script_name}&transaction={transaction}"
+            self.driver.get(url)
             time.sleep(2)
         except Exception as e:
             logger.info(f"Failed to navigate to place order page: {e}")
@@ -444,7 +446,7 @@ class SeleniumTMSClient:
         Scrapes market depth data for multiple symbols.
         """
         if symbols is None:
-            symbols = ["NABIL", "NICA" , "GBIME", "HIDCL", "NLIC"]
+            symbols = ["RURU", "NICA" , "GBIME", "HIDCL", "NLIC"]
             # symbols = ["NABIL", "NICA", "NRIC", "NEPSE", "GBIME", "KBL", "PCBL", "NLIC", "HIDCL", "SHIVM"]
         data = {}
         for symbol in symbols:
@@ -455,7 +457,7 @@ class SeleniumTMSClient:
     
     def scrape_top_depth_for_symbol(self, symbol_name):
         """
-        Scrapes top buyer and seller for a given stock symbol.
+        Scrapes top buyer and seller for a given stock symbol, with retry logic for stale elements.
         """
         try:
             # Clear and enter symbol
@@ -464,50 +466,55 @@ class SeleniumTMSClient:
             )
             symbol_input.clear()
             symbol_input.send_keys(symbol_name)
-            time.sleep(1)  # Increased delay
+            time.sleep(2)
             symbol_input.send_keys(Keys.ENTER)
-            time.sleep(2)  # Wait for data to load
+            time.sleep(2)
 
-
-            # Initialize empty result
             result = {
                 "top_buyer": {"price": None, "quantity": None},
                 "top_seller": {"price": None, "quantity": None},
                 "error": None
             }
 
-            # Try alternative selectors
-            try:
-                # Wait for the entire depth section to load
+            def safe_extract_depth():
                 depth_section = WebDriverWait(self.driver, 15).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, "div.col-md-5.col-sm-12"))
                 )
-                
-                # Try more generic selector for buy rows
+
+                # --- Buy side ---
                 buy_rows = depth_section.find_elements(By.CSS_SELECTOR, "tr.text-buy")
                 if not buy_rows:
                     buy_rows = depth_section.find_elements(By.XPATH, ".//tr[contains(@class, 'text-buy')]")
-                
+
                 if buy_rows:
                     cells = buy_rows[0].find_elements(By.TAG_NAME, "td")
                     if len(cells) >= 3:
                         result["top_buyer"]["quantity"] = int(cells[1].text.strip())
                         result["top_buyer"]["price"] = float(cells[2].text.strip())
 
-                # Try more generic selector for sell rows
+                # --- Sell side ---
                 sell_rows = depth_section.find_elements(By.CSS_SELECTOR, "tr.text-sell")
                 if not sell_rows:
                     sell_rows = depth_section.find_elements(By.XPATH, ".//tr[contains(@class, 'text-sell')]")
-                
+
                 if sell_rows:
                     cells = sell_rows[0].find_elements(By.TAG_NAME, "td")
                     if len(cells) >= 2:
                         result["top_seller"]["price"] = float(cells[0].text.strip())
                         result["top_seller"]["quantity"] = int(cells[1].text.strip())
 
-            except Exception as e:
-                result["error"] = f"Scraping error: {str(e)}"
-                logger.error(f"Scraping error for {symbol_name}: {str(e)}")
+            # Try scraping up to 2 times in case of stale element
+            for attempt in range(2):
+                try:
+                    safe_extract_depth()
+                    break
+                except StaleElementReferenceException as e:
+                    logger.warning(f"Retry {attempt + 1} due to stale element for {symbol_name}")
+                    time.sleep(1)
+                except Exception as e:
+                    result["error"] = f"Scraping error: {str(e)}"
+                    logger.error(f"Scraping error for {symbol_name}: {str(e)}")
+                    break
 
             logger.info(f"Scraped data for {symbol_name}: {result}")
             return result
