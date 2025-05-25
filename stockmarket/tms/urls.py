@@ -5,4 +5,5 @@ urlpatterns = [
     # Other URL patterns...
     path('tms/', views.tms_login_view, name='tms_login'),
     path('submit-captcha/', views.submit_captcha, name='submit_captcha'),
+    path("api/live-depth/", views.live_market_depth_view, name="live_market_depth"),
 ]

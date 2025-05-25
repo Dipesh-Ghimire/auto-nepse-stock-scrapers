@@ -1,9 +1,11 @@
 from decimal import Decimal
 from django.shortcuts import render
+from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from .forms import TMSLoginForm
 from .selenium_client import SeleniumTMSClient
 import logging
+from .utility import filter_stock_data
 logger = logging.getLogger("stocks")
 
 # TEMPORARY session cache (not production-safe)
@@ -61,16 +63,18 @@ def submit_captcha(request):
             })
 
         client.submit_login(captcha_text)
+        client.order_entry_visited = False
         if client.login_successful():
-            dashboard_data = client.scrape_dashboard_stats()
-            collateral_data = client.scrape_collateral()
-            # html_table = client.get_market_depth_html(instrument_type="EQ", script_name="MEN")
-            client.go_to_place_order(script_name=order_data['script_name'],transaction=order_data['transaction_type'])
-            client.execute_trade(script_name=order_data['script_name'],price=order_data['price'], quantity=order_data['quantity'], transaction=order_data['transaction_type'])
-            client.close()
-            return render(request, "tms/login_success.html", {"dashboard_data": dashboard_data, "collateral_data": collateral_data})
-            # return render(request, "tms/market_depth.html", {"table_html": html_table})
-
+            # dashboard_data = client.scrape_dashboard_stats()
+            # collateral_data = client.scrape_collateral()
+            # # html_table = client.get_market_depth_html(instrument_type="EQ", script_name="MEN")
+            # client.go_to_place_order(script_name=order_data['script_name'],transaction=order_data['transaction_type'])
+            # client.execute_trade(script_name=order_data['script_name'],price=order_data['price'], quantity=order_data['quantity'], transaction=order_data['transaction_type'])
+            # client.close()
+            # return render(request, "tms/login_success.html", {"dashboard_data": dashboard_data, "collateral_data": collateral_data})
+            # # return render(request, "tms/market_depth.html", {"table_html": html_table})
+            session_cache["client"] = client  # store client for next step
+            return render(request, "tms/live_market_depth.html")
 
         else:
             # Refresh captcha and retry
@@ -80,3 +84,23 @@ def submit_captcha(request):
                 "broker": broker,
                 "error": "Login failed. Please try again."
             })
+
+@csrf_exempt
+def live_market_depth_view(request):
+    """
+    Returns top buyer/seller price + quantity for multiple stocks in JSON.
+    Assumes login and navigation to order page already done.
+    """
+    client: SeleniumTMSClient = session_cache.get("client")
+    try:
+        if client:
+            if client.order_entry_visited == False:
+                client.go_to_order_entry()
+                client.order_entry_visited = True
+            stock_data = client.scrape_multiple_stocks()
+            filtered_data = filter_stock_data(stock_data)
+            logger.info(f"Scraped market depth data: {filtered_data}")
+            return JsonResponse(filtered_data, safe=False)
+    except Exception as e:
+        logger.exception("Error scraping market depth")
+        return JsonResponse({"error": str(e)}, status=500)
