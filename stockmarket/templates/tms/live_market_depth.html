@@ -1,0 +1,72 @@
+{% extends 'base_generic.html' %}
+    {% block content %}
+        <style>
+            body { padding: 2rem; }
+            table { margin-top: 1rem; }
+            .text-updated { animation: flash 0.3s; }
+            @keyframes flash {
+                from { background-color: #ffffcc; }
+                to { background-color: transparent; }
+            }
+        </style>
+        <h2>📈 Live Market Depth (Top Buyer & Seller)</h2>
+    
+        <table class="table table-bordered table-striped">
+            <thead>
+                <tr>
+                    <th>Stock</th>
+                    <th>Top Buy Price</th>
+                    <th>Buy Qty</th>
+                    <th>Top Sell Price</th>
+                    <th>Sell Qty</th>
+                    <th>Price Diff</th>
+                </tr>
+            </thead>
+            <tbody id="depth-table-body">
+                <tr><td colspan="6">Loading data...</td></tr>
+            </tbody>
+        </table>
+    
+        <script>
+            async function fetchLiveDepth() {
+                try {
+                    const response = await fetch("/api/live-depth/");
+                    let data = await response.json();
+    
+                    const table = document.getElementById("depth-table-body");
+                    table.innerHTML = "";
+    
+                    // Convert object to array and sort by top_price_diff
+                    const sortedEntries = Object.entries(data)
+                        .filter(([_, depth]) => !depth.error)
+                        .sort((a, b) => a[1].top_price_diff - b[1].top_price_diff);
+    
+                    for (const [symbol, depth] of sortedEntries) {
+                        const row = document.createElement("tr");
+                        row.innerHTML = `
+                            <td>${symbol}</td>
+                            <td class="text-updated">${depth.top_buyer.price}</td>
+                            <td>${depth.top_buyer.quantity}</td>
+                            <td class="text-updated">${depth.top_seller.price}</td>
+                            <td>${depth.top_seller.quantity}</td>
+                            <td>${depth.top_price_diff.toFixed(2)}</td>
+                        `;
+                        table.appendChild(row);
+                    }
+    
+                    if (sortedEntries.length === 0) {
+                        table.innerHTML = "<tr><td colspan='6'>No data available.</td></tr>";
+                    }
+    
+                } catch (error) {
+                    console.error("Error fetching live data:", error);
+                    const table = document.getElementById("depth-table-body");
+                    table.innerHTML = "<tr><td colspan='6'>Error fetching data.</td></tr>";
+                }
+            }
+    
+            // Refresh every 10 seconds
+            setInterval(fetchLiveDepth, 10000);
+            fetchLiveDepth(); // Initial load
+        </script>
+    {% endblock %}
