@@ -1,6 +1,7 @@
 from decimal import Decimal
 from django.shortcuts import render
 from django.http import JsonResponse
+import json
 from django.views.decorators.csrf import csrf_exempt
 from .forms import TMSLoginForm
 from .selenium_client import SeleniumTMSClient
@@ -97,10 +98,43 @@ def live_market_depth_view(request):
             if client.order_entry_visited == False:
                 client.go_to_order_entry()
                 client.order_entry_visited = True
-            stock_data = client.scrape_multiple_stocks()
-            filtered_data = filter_stock_data(stock_data)
-            logger.info(f"Scraped market depth data: {filtered_data}")
-            return JsonResponse(filtered_data, safe=False)
+
+            # Only scrape if explicitly requested
+            should_scrape = request.GET.get("scrape") == "true"
+            if should_scrape:
+                stock_data = client.scrape_multiple_stocks()
+                filtered_data = filter_stock_data(stock_data)
+                return JsonResponse(filtered_data, safe=False)
+            else:
+                return JsonResponse({"message": "Scraping not triggered"}, status=200)
     except Exception as e:
         logger.exception("Error scraping market depth")
         return JsonResponse({"error": str(e)}, status=500)
+
+@csrf_exempt
+def place_order(request):
+    """
+    Places an order based on the provided script name, price, quantity, and transaction type.
+    Returns a JSON response indicating success or failure.
+    """
+    client: SeleniumTMSClient = session_cache.get("client")
+    if not client:
+        return JsonResponse({"error": "Session expired. Please log in again."}, status=400)
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            script = data.get("script_name")
+            try:
+                price = float(data.get("price", 0))
+                quantity = int(data.get("quantity", 0))
+            except (ValueError, TypeError):
+                return JsonResponse({"error": "Invalid price or quantity"}, status=400)
+            txn_type = data.get("transaction_type")
+
+            client.go_to_place_order(script_name=script,transaction=txn_type)
+            client.execute_trade(script_name=script, price=price, quantity=quantity, transaction=txn_type)
+            
+            return JsonResponse({"success": True, "message": "Order Placed successfully."}, status=200)
+        except Exception as e:
+            logger.exception("Error executing trade")
+            return JsonResponse({"error": str(e)}, status=500)

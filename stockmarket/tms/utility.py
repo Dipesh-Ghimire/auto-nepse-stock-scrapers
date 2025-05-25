@@ -1,4 +1,3 @@
-#utility.py
 import json
 import logging
 import os
@@ -20,7 +19,7 @@ def filter_stock_data(stock_data):
     # Filter out invalid or incomplete entries (optional)
     filtered_data = {
         symbol: data for symbol, data in stock_data.items()
-        if data.get("top_price_diff") is not None
+        if data.get("top_price_diff") is not None and data.get("top_price_diff") >= 0
     }
 
     # Sort the dictionary based on top_price_diff (ascending)
