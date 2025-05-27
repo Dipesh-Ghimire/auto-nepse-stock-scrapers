@@ -23,14 +23,14 @@ def tms_login_view(request):
             username = form.cleaned_data['username']
             password = form.cleaned_data['password']
 
-            order_data = {
-                "script_name": form.cleaned_data['script_name'],
-                "transaction_type": form.cleaned_data['transaction_type'],
-                "price": str(form.cleaned_data['price']),
-                "quantity": str(form.cleaned_data['quantity']),
-                "price_threshold": str(form.cleaned_data['price_threshold'])
-            }
-            request.session['order_data'] = order_data
+            # order_data = {
+            #     "script_name": form.cleaned_data['script_name'],
+            #     "transaction_type": form.cleaned_data['transaction_type'],
+            #     "price": str(form.cleaned_data['price']),
+            #     "quantity": str(form.cleaned_data['quantity']),
+            #     "price_threshold": str(form.cleaned_data['price_threshold'])
+            # }
+            # request.session['order_data'] = order_data
             client = SeleniumTMSClient(broker)
             client.open_login_page()
             captcha_img = client.get_captcha_base64()
@@ -75,10 +75,10 @@ def submit_captcha(request):
         captcha_text = request.POST.get("captcha")
         broker = request.POST.get("broker")
         
-        order_data = request.session.get('order_data')
-        order_data['price'] = Decimal(order_data['price'])
-        order_data['quantity'] = Decimal(order_data['quantity'])
-        order_data['price_threshold'] = Decimal(order_data['price_threshold'])
+        # order_data = request.session.get('order_data')
+        # order_data['price'] = Decimal(order_data['price'])
+        # order_data['quantity'] = Decimal(order_data['quantity'])
+        # order_data['price_threshold'] = Decimal(order_data['price_threshold'])
 
         client:SeleniumTMSClient = session_cache.get("client")
         if not client:

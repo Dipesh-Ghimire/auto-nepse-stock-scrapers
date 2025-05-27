@@ -2,6 +2,7 @@ from typing import Literal
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
@@ -10,14 +11,18 @@ from selenium.webdriver.support.ui import Select
 from selenium.common.exceptions import StaleElementReferenceException
 import time
 import logging
+
+from stockmarket import settings
 logger = logging.getLogger("stocks")
 
 class SeleniumTMSClient:
-    def __init__(self, broker_number, headless=False):
+    def __init__(self, broker_number, headless=True):
+        self.chromedriver_path =settings.CHROMEDRIVER_PATH
         self.broker_number = broker_number
         self.username = None
         self.password = None
         self.driver = self._init_driver(headless)
+        self.headless = headless
         self.login_url = f"https://tms{self.broker_number}.nepsetms.com.np/login"
         self.order_url = f"https://tms{self.broker_number}.nepsetms.com.np/tms/me/memberclientorderentry"
         self.order_entry_visited = False
@@ -28,10 +33,24 @@ class SeleniumTMSClient:
     def _init_driver(self, headless):
         options = Options()
         if headless:
-            options.add_argument("--headless")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        return webdriver.Chrome(options=options)
+            options.add_argument('--headless=new')
+        options.add_argument('--disable-blink-features=AutomationControlled')
+        options.add_argument('--disable-dev-shm-usage')
+        options.add_argument('--no-sandbox')
+        options.add_argument('--window-size=1920,1080')
+        options.add_argument('--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36')
+        options.add_experimental_option("excludeSwitches", ["enable-automation"])
+        options.add_experimental_option("useAutomationExtension", False)
+        prefs = {"profile.managed_default_content_settings.images": 1,
+                "profile.default_content_setting_values.notifications": 2,
+                "profile.default_content_setting_values.stylesheets": 2,
+                "profile.default_content_setting_values.javascript": 1}
+        options.add_experimental_option("prefs", prefs)
+
+        service = Service(self.chromedriver_path)
+        driver = webdriver.Chrome(service=service, options=options)
+        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
+        return driver
 
     def open_login_page(self):
         self.driver.get(self.login_url)
