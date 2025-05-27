@@ -9,13 +9,18 @@
                 to { background-color: transparent; }
             }
         </style>
-        <h2>📈 Live Market Depth (Top Buyer & Seller)</h2>
+
+        {% include 'tms/watchlist.html' %}
+
+        <h2 class="mt-5">📈 Live Market Depth (Top Buyers & Sellers)</h2>
         <div style="margin: 1rem 0;">
             <button class="btn btn-primary" id="start" onclick="startFetching()">▶️</button>
-            <button class="btn btn-secondary" id="stop" onclick="stopFetching()" disabled>⏹️</button>
+            <button class="btn btn-secondary" id="stop" onclick="stopFetching()" hidden>⏹️</button>
             <span id="fetch-status" style="margin-left: 1rem; font-weight: bold;">Status: OFF</span>
         </div>
 
+        <!-- Toast-style Alert Box -->
+        <div id="alert-box" class="alert d-none position-fixed top-0 end-0 m-3" style="z-index: 1055;" role="alert"></div>
     
         <table class="table table-bordered table-striped">
             <thead>
@@ -38,7 +43,16 @@
             window.fetchInterval = null;
             async function fetchLiveDepth() {
                 try {
-                    const response = await fetch("/api/live-depth/?scrape=true");
+                    const response = await fetch("/api/live-depth/", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            scrape: true,
+                            watchlist: watchlist,
+                        }),
+                    });
                     let data = await response.json();
     
                     const table = document.getElementById("depth-table-body");
@@ -50,20 +64,22 @@
                         .sort((a, b) => a[1].top_price_diff - b[1].top_price_diff);
     
                     for (const [symbol, depth] of sortedEntries) {
-                        const row = document.createElement("tr");
-                        row.innerHTML = `
-                            <td>${symbol}</td>
-                            <td class="text-updated">${depth.top_buyer.price}</td>
-                            <td>${depth.top_buyer.quantity}</td>
-                            <td class="text-updated">${depth.top_seller.price}</td>
-                            <td>${depth.top_seller.quantity}</td>
-                            <td>${depth.top_price_diff.toFixed(2)}</td>
-                            <td>
-                                <button class="btn btn-success action-btn" onclick="placeOrder('${symbol}', ${depth.top_seller.price}, ${depth.top_seller.quantity}, 'Buy')">BUY</button>
-                                <button class="btn btn-danger action-btn" onclick="placeOrder('${symbol}', ${depth.top_buyer.price}, ${depth.top_buyer.quantity}, 'Sell')">SELL</button>
-                            </td>
-                        `;
-                        table.appendChild(row);
+                        if (watchlist.includes(symbol)){
+                            const row = document.createElement("tr");
+                            row.innerHTML = `
+                                <td>${symbol}</td>
+                                <td class="text-updated">${depth.top_buyer.price}</td>
+                                <td>${depth.top_buyer.quantity}</td>
+                                <td class="text-updated">${depth.top_seller.price}</td>
+                                <td>${depth.top_seller.quantity}</td>
+                                <td>${depth.top_price_diff.toFixed(2)}</td>
+                                <td>
+                                    <button class="btn btn-success action-btn" onclick="placeOrder('${symbol}', ${depth.top_seller.price}, ${depth.top_seller.quantity}, 'Buy')">BUY</button>
+                                    <button class="btn btn-danger action-btn" onclick="placeOrder('${symbol}', ${depth.top_buyer.price}, ${depth.top_buyer.quantity}, 'Sell')">SELL</button>
+                                </td>
+                            `;
+                            table.appendChild(row);
+                        }
                     }
     
                     if (sortedEntries.length === 0) {
@@ -97,9 +113,9 @@
                     });
                     const result = await response.json();
                     if (result.success) {
-                        alert(`Order placed successfully: ${transaction_type} ${quantity} of ${symbol} at ${price}`);
+                        showAlert(`Order placed successfully: ${transaction_type} ${quantity} of ${symbol} at ${price}`, 'success')
                     } else {
-                        alert(`Trade failed: ${result.error}`);
+                        showAlert(`Trade failed: ${result.error}`, 'danger');
                     }
                     if (disabled_fetching_flag) {
                         startFetching();
@@ -115,11 +131,11 @@
             function startFetching() {
                 if (!window.fetchInterval) {
                     fetchLiveDepth(); // Fetch immediately
-                    window.fetchInterval = setInterval(fetchLiveDepth, 20000);
+                    window.fetchInterval = setInterval(fetchLiveDepth, 10000);
                     console.log("Fetching started");
                     document.getElementById("fetch-status").innerText = "Status: ON";
-                    document.getElementById("start").disabled = true;
-                    document.getElementById("stop").disabled = false;
+                    document.getElementById("start").hidden = true;
+                    document.getElementById("stop").hidden = false;
                 }
             }
 
@@ -129,9 +145,24 @@
                     window.fetchInterval = null;
                     console.log("Fetching stopped");
                     document.getElementById("fetch-status").innerText = "Status: OFF";
-                    document.getElementById("start").disabled = false;
-                    document.getElementById("stop").disabled = true;
+                    document.getElementById("start").hidden = false;
+                    document.getElementById("stop").hidden = true;
                 }
+            }
+            function showAlert(message, type = 'success') {
+                const alertBox = $('#alert-box');
+                
+                alertBox
+                    .removeClass('d-none alert-success alert-danger alert-warning alert-info')
+                    .addClass('alert-' + type)
+                    .html(message)
+                    .fadeIn();
+
+                setTimeout(() => {
+                    alertBox.fadeOut(() => {
+                        alertBox.addClass('d-none').html('');
+                    });
+                }, 8000);
             }
 
         </script>

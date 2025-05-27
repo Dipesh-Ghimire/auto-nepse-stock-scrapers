@@ -1,0 +1,195 @@
+<style>
+        .watchlist-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .watchlist-item {
+            padding: 6px 12px;
+            border: 1px solid white;
+            border-radius: 4px;
+            background-color: #f8f9fa;
+            display: inline-flex;
+            align-items: center;
+        }
+        .search-results {
+            position: absolute;
+            z-index: 1000;
+            width: 80%;
+            max-height: 300px;
+            overflow-y: auto;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 0 0 4px 4px;
+            display: none;
+        }
+        .search-result-item {
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 8px 15px;
+            cursor: pointer;
+        }
+        .search-result-item:hover {
+            background-color: darkgray;
+        }
+        .remove-script {
+            cursor: pointer;
+            color: #dc3545;
+            margin-left: 8px;
+        }
+    </style>
+    <div class="container mt-4">
+        <h2 class="mb-4">Watch List</h2>
+        
+        <!-- Search Box -->
+        <div class="row mb-4">
+            <div class="col-md-6 position-relative">
+                <input type="text" class="form-control" id="scriptSearch" placeholder="Search NEPSE scripts...">
+                <div id="searchResults" class="search-results"></div>
+            </div>
+        </div>
+        
+        <!-- Watchlist Display -->
+        <div class="row">
+            <div class="col-md-6">
+                <div id="watchlistContainer" class="watchlist-container">
+                    <!-- Watchlist items will be added here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    
+    <!-- Custom JavaScript -->
+    <script>
+        // Import scripts from django view to JavaScript
+        const nepseScripts = {{ scripts|safe }};
+        // Current watchlist (initialize with some default items)
+        let watchlist = [];
+
+        // Initialize the watchlist display
+        function renderWatchlist() {
+            const container = $('#watchlistContainer');
+            container.empty();
+            
+            if (watchlist.length === 0) {
+                container.append('<p>Your watchlist is empty. Add scripts to track them.</p>');
+                return;
+            }
+            
+            watchlist.forEach(symbol => {
+                const item = $(`
+                    <span class="watchlist-item">
+                        ${symbol}
+                        <span class="remove-script" data-symbol="${symbol}">×</span>
+                    </span>
+                `);
+                container.append(item);
+            });
+            
+            // Add click handler for remove buttons
+            $('.remove-script').click(function() {
+                const symbol = $(this).data('symbol');
+                removeFromWatchlist(symbol);
+            });
+        }
+
+        // Add to watchlist
+        function addToWatchlist(symbol) {
+            if (!watchlist.includes(symbol)) {
+                watchlist.push(symbol);
+                renderWatchlist();
+            }
+        }
+
+        // Remove from watchlist
+        function removeFromWatchlist(symbol) {
+            watchlist = watchlist.filter(item => item !== symbol);
+            renderWatchlist();
+        }
+
+        // Search scripts
+        $('#scriptSearch').on('input', function() {
+            const query = $(this).val().toUpperCase();
+            const results = $('#searchResults');
+            
+            if (query.length < 1) {
+                results.hide();
+                return;
+            }
+            
+            const matches = nepseScripts.filter(script => 
+                script.includes(query)
+            ).slice(0, 10); // Limit to 10 results
+            
+            if (matches.length === 0) {
+                results.html('<div class="search-result-item">No matches found</div>');
+            } else {
+                results.empty();
+                matches.forEach(script => {
+                    const item = $(`<div class="search-result-item">${script}</div>`);
+                    item.click(function() {
+                        addToWatchlist(script);
+                        $('#scriptSearch').val('');
+                        results.hide();
+                    });
+                    results.append(item);
+                });
+            }
+            
+            results.show();
+        });
+
+        // Hide results when clicking elsewhere
+        $(document).click(function(e) {
+            if (!$(e.target).closest('#scriptSearch').length && !$(e.target).closest('#searchResults').length) {
+                $('#searchResults').hide();
+            }
+        });
+
+        // Initialize on page load
+        $(document).ready(function() {
+            renderWatchlist();
+        });
+        $('#scriptSearch').on('input', function() {
+    const query = $(this).val().toUpperCase().trim();
+    const results = $('#searchResults');
+    
+    if (query.length < 1) {
+        results.hide();
+        return;
+    }
+    
+    const matches = nepseScripts.filter(script => 
+        script.startsWith(query) // Changed from includes() to startsWith()
+    ).slice(0, 10);
+    
+    if (matches.length === 0) {
+        results.html('<div class="search-result-item">No matches found</div>');
+    } else {
+        results.empty();
+        
+        // Auto-select only when exact match is found
+        if (matches.length === 1 && matches[0] === query) {
+            setTimeout(() => {
+                addToWatchlist(matches[0]);
+                $(this).val('');
+                results.hide();
+            }, 300); // Small delay to let user see the match
+            return;
+        }
+        
+        matches.forEach(script => {
+            const item = $(`<div class="search-result-item">${script}</div>`);
+            item.click(function() {
+                addToWatchlist(script);
+                $('#scriptSearch').val('');
+                results.hide();
+            });
+            results.append(item);
+        });
+    }
+    
+    results.show();
+});
+    </script>
