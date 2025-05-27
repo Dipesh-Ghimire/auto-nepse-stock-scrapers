@@ -1,8 +1,11 @@
 from decimal import Decimal
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.http import JsonResponse
 import json
+import os
 from django.views.decorators.csrf import csrf_exempt
+
+from stockmarket import settings
 from .forms import TMSLoginForm
 from .selenium_client import SeleniumTMSClient
 import logging
@@ -34,11 +37,13 @@ def tms_login_view(request):
 
             client.fill_credentials(username, password)
             session_cache["client"] = client  # store client for next step
-
-            return render(request, "tms/enter_captcha.html", {
-                "captcha_img": captcha_img,
-                "broker": broker,
-            })
+            session_cache["broker"] = broker
+            session_cache["captcha_img"] = captcha_img
+            # return render(request, "tms/enter_captcha.html", {
+            #     "captcha_img": captcha_img,
+            #     "broker": broker,
+            # })
+            return redirect("tms_captcha_page")
     else:
         form = TMSLoginForm()
         # if client exists in session, close it
@@ -48,6 +53,20 @@ def tms_login_view(request):
             session_cache.pop("client", None)
     return render(request, "tms/login_form.html", {"form": form})
 
+def tms_captcha_page(request):
+    client: SeleniumTMSClient = session_cache.get("client")
+    broker = session_cache.get("broker")
+    captcha_img = session_cache.get("captcha_img")
+    
+    if not client or not broker or not captcha_img:
+        return redirect("tms_login")
+
+    # Refresh the captcha every time this page is loaded
+    captcha_img = client.get_new_captcha()
+    return render(request, "tms/enter_captcha.html", {
+        "captcha_img": captcha_img,
+        "broker": broker,
+    })
 
 
 @csrf_exempt
@@ -71,16 +90,9 @@ def submit_captcha(request):
         client.submit_login(captcha_text)
         client.order_entry_visited = False
         if client.login_successful():
-            # dashboard_data = client.scrape_dashboard_stats()
-            # collateral_data = client.scrape_collateral()
-            # # html_table = client.get_market_depth_html(instrument_type="EQ", script_name="MEN")
-            # client.go_to_place_order(script_name=order_data['script_name'],transaction=order_data['transaction_type'])
-            # client.execute_trade(script_name=order_data['script_name'],price=order_data['price'], quantity=order_data['quantity'], transaction=order_data['transaction_type'])
-            # client.close()
-            # return render(request, "tms/login_success.html", {"dashboard_data": dashboard_data, "collateral_data": collateral_data})
-            # # return render(request, "tms/market_depth.html", {"table_html": html_table})
             session_cache["client"] = client  # store client for next step
-            return render(request, "tms/live_market_depth.html")
+            # return render(request, "tms/live_market_depth.html")
+            return redirect('live_market_depth_page')
 
         else:
             # Refresh captcha and retry
@@ -90,6 +102,16 @@ def submit_captcha(request):
                 "broker": broker,
                 "error": "Login failed. Please try again."
             })
+    
+def live_market_depth_page(request):
+    symbols_path = os.path.join(settings.BASE_DIR, 'tms', 'static_data', 'symbols.json')
+    with open(symbols_path, 'r') as f:
+        scripts = json.load(f)
+
+    if session_cache.get("client") is None:
+        return redirect("tms_login")
+    else:
+        return render(request, "tms/live_market_depth.html",{'scripts': scripts})
 
 @csrf_exempt
 def live_market_depth_view(request):
@@ -98,22 +120,26 @@ def live_market_depth_view(request):
     Assumes login and navigation to order page already done.
     """
     client: SeleniumTMSClient = session_cache.get("client")
-    if not client:
-        return JsonResponse({"error": "Session expired. Please log in again."}, status=400)
     try:
         if client:
             if client.order_entry_visited == False:
                 client.go_to_order_entry()
                 client.order_entry_visited = True
+            
+            if request.method == "POST":
+                body = json.loads(request.body)
+                should_scrape = body.get("scrape", False)
+                watchlist = body.get("watchlist", [])
 
             # Only scrape if explicitly requested
-            should_scrape = request.GET.get("scrape") == "true"
             if should_scrape:
-                client.scrape_multiple_stocks()
+                client.scrape_multiple_stocks(watchlist)
                 filtered_data = filter_stock_data(client.latest_scraped_data)
                 return JsonResponse(filtered_data, safe=False)
             else:
                 return JsonResponse({"message": "Scraping not triggered"}, status=200)
+        else:
+            return redirect("tms_login")
     except Exception as e:
         logger.exception("Error scraping market depth")
         return JsonResponse({"error": str(e)}, status=500)
@@ -147,3 +173,4 @@ def place_order(request):
         except Exception as e:
             logger.exception("Error executing trade")
             return JsonResponse({"error": str(e)}, status=500)
+        

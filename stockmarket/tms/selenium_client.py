@@ -21,7 +21,7 @@ class SeleniumTMSClient:
         self.login_url = f"https://tms{self.broker_number}.nepsetms.com.np/login"
         self.order_url = f"https://tms{self.broker_number}.nepsetms.com.np/tms/me/memberclientorderentry"
         self.order_entry_visited = False
-        self.tracking_symbol = ["RURU", "NICA" , "GBIME", "HIDCL", "NLIC"]
+        self.tracking_symbol = ["RURU", "NICA"]
         self.latest_scraped_data = {}
         self.stop_scraping_flag = False
 
@@ -448,7 +448,9 @@ class SeleniumTMSClient:
         """
         Scrapes market depth data for multiple symbols.
         """
-        for symbol in self.tracking_symbol:
+        if symbols is None:
+            symbols = self.tracking_symbol
+        for symbol in symbols:
             self.scrape_top_depth_for_symbol(symbol)
             time.sleep(0.5)
         return True
