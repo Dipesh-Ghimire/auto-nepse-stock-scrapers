@@ -41,6 +41,11 @@ def tms_login_view(request):
             })
     else:
         form = TMSLoginForm()
+        # if client exists in session, close it
+        client = session_cache.get("client")
+        if client:
+            client.close()
+            session_cache.pop("client", None)
     return render(request, "tms/login_form.html", {"form": form})
 
 
@@ -93,6 +98,8 @@ def live_market_depth_view(request):
     Assumes login and navigation to order page already done.
     """
     client: SeleniumTMSClient = session_cache.get("client")
+    if not client:
+        return JsonResponse({"error": "Session expired. Please log in again."}, status=400)
     try:
         if client:
             if client.order_entry_visited == False:
@@ -102,8 +109,8 @@ def live_market_depth_view(request):
             # Only scrape if explicitly requested
             should_scrape = request.GET.get("scrape") == "true"
             if should_scrape:
-                stock_data = client.scrape_multiple_stocks()
-                filtered_data = filter_stock_data(stock_data)
+                client.scrape_multiple_stocks()
+                filtered_data = filter_stock_data(client.latest_scraped_data)
                 return JsonResponse(filtered_data, safe=False)
             else:
                 return JsonResponse({"message": "Scraping not triggered"}, status=200)
@@ -122,6 +129,7 @@ def place_order(request):
         return JsonResponse({"error": "Session expired. Please log in again."}, status=400)
     if request.method == "POST":
         try:
+            client.stop_scraping_flag = True # stop scraping thread
             data = json.loads(request.body)
             script = data.get("script_name")
             try:
@@ -133,6 +141,7 @@ def place_order(request):
 
             client.go_to_place_order(script_name=script,transaction=txn_type)
             client.execute_trade(script_name=script, price=price, quantity=quantity, transaction=txn_type)
+            client.stop_scraping_flag = False # resume scraping thread
             
             return JsonResponse({"success": True, "message": "Order Placed successfully."}, status=200)
         except Exception as e:

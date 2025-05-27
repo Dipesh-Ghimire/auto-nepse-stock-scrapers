@@ -21,6 +21,9 @@ class SeleniumTMSClient:
         self.login_url = f"https://tms{self.broker_number}.nepsetms.com.np/login"
         self.order_url = f"https://tms{self.broker_number}.nepsetms.com.np/tms/me/memberclientorderentry"
         self.order_entry_visited = False
+        self.tracking_symbol = ["RURU", "NICA" , "GBIME", "HIDCL", "NLIC"]
+        self.latest_scraped_data = {}
+        self.stop_scraping_flag = False
 
     def _init_driver(self, headless):
         options = Options()
@@ -445,20 +448,19 @@ class SeleniumTMSClient:
         """
         Scrapes market depth data for multiple symbols.
         """
-        if symbols is None:
-            symbols = ["RURU", "NICA" , "GBIME", "HIDCL", "NLIC"]
-            # symbols = ["NABIL", "NICA", "NRIC", "NEPSE", "GBIME", "KBL", "PCBL", "NLIC", "HIDCL", "SHIVM"]
-        data = {}
-        for symbol in symbols:
-            data[symbol] = self.scrape_top_depth_for_symbol(symbol)
+        for symbol in self.tracking_symbol:
+            self.scrape_top_depth_for_symbol(symbol)
             time.sleep(0.5)
-
-        return data
+        return True
     
     def scrape_top_depth_for_symbol(self, symbol_name):
         """
         Scrapes top buyer and seller for a given stock symbol, with retry logic for stale elements.
         """
+        # if flag is true, then stop scraping
+        if self.stop_scraping_flag:
+            logger.info(f"Stopping scraping as per flag.")
+            return
         try:
             # Clear and enter symbol
             symbol_input = WebDriverWait(self.driver, 15).until(
@@ -517,9 +519,13 @@ class SeleniumTMSClient:
                     break
 
             logger.info(f"Scraped data for {symbol_name}: {result}")
-            return result
+            self.latest_scraped_data[symbol_name] = result  # Update latest scraped data
+            return
 
         except Exception as e:
             error_msg = f"Failed for {symbol_name}: {str(e)}"
             logger.error(error_msg)
             return {"error": error_msg}
+    
+    def get_latest_data(self):
+        return self.latest_scraped_data

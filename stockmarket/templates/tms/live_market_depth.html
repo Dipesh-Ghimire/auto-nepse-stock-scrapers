@@ -78,6 +78,11 @@
             }
             async function placeOrder(symbol, price, quantity, transaction_type) {
                 try {
+                    disabled_fetching_flag = false;
+                    if (window.fetchInterval){
+                        disabled_fetching_flag = true;
+                        stopFetching();
+                    }
                     const response = await fetch("/api/place-order/", {
                         method: "POST",
                         headers: {
@@ -96,6 +101,10 @@
                     } else {
                         alert(`Trade failed: ${result.error}`);
                     }
+                    if (disabled_fetching_flag) {
+                        startFetching();
+                    }
+
                 } catch (error) {
                     console.error("Error executing trade:", error);
                     alert("Error executing trade. Please try again.");
