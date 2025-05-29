@@ -13,7 +13,7 @@ import time
 import logging
 
 from stockmarket import settings
-logger = logging.getLogger("stocks")
+logger = logging.getLogger("tms")
 
 class SeleniumTMSClient:
     def __init__(self, broker_number, headless=True):
@@ -115,7 +115,6 @@ class SeleniumTMSClient:
 
         except Exception as e:
             logger.info("Error scraping dashboard: %s", e)
-            self.driver.save_screenshot("scrape_error.png")  # Help debug
 
         return data
 
@@ -148,7 +147,6 @@ class SeleniumTMSClient:
 
         except Exception as e:
             logger.info("Error scraping collateral data: %s", e)
-            self.driver.save_screenshot("scrape_collateral_error.png")
 
         return data
 
@@ -188,7 +186,6 @@ class SeleniumTMSClient:
 
         except Exception as e:
             logger.info("Error executing trade: %s", e)
-            self.driver.save_screenshot("trade_execution_error.png")
 
     def enter_trade_details(self, quantity, price):
         try:
@@ -211,7 +208,6 @@ class SeleniumTMSClient:
 
         except Exception as e:
             logger.info("Error entering trade details: %s", e)
-            self.driver.save_screenshot("enter_trade_error.png")
     
     def extract_stock_data(self):
         data = {
@@ -273,7 +269,6 @@ class SeleniumTMSClient:
 
         except Exception as e:
             logger.info("Error extracting stock data: %s", e)
-            self.driver.save_screenshot("stock_data_error.png")
 
         return data
 
@@ -322,7 +317,6 @@ class SeleniumTMSClient:
 
         except Exception as e:
             logger.info("Error extracting market depth: %s", e)
-            self.driver.save_screenshot("market_depth_error.png")
 
         return market_depth
 
@@ -342,7 +336,6 @@ class SeleniumTMSClient:
 
         except Exception as e:
             logger.info("Failed to click BUY button: %s", e)
-            self.driver.save_screenshot("buy_button_error.png")
 
     def click_sell_button(self):
         try:
@@ -351,7 +344,6 @@ class SeleniumTMSClient:
             logger.info("Sell button clicked.")
         except Exception as e:
             logger.info("Error clicking sell button: %s", e)
-            self.driver.save_screenshot("click_sell_error.png")
 
     def wait_for_toast(self, timeout=10) -> str:
         try:
@@ -397,7 +389,6 @@ class SeleniumTMSClient:
 
         except TimeoutException:
             logger.info("❌ Could not navigate to Market Depth")
-            self.driver.save_screenshot("market_depth_error.png")
             return False
 
     def get_market_depth_html(self, instrument_type: str, script_name: str) -> str:
@@ -439,7 +430,6 @@ class SeleniumTMSClient:
 
         except TimeoutException as e:
             logger.info("❌ Failed to load market depth")
-            self.driver.save_screenshot("market_depth_failed.png")
             return "<p>Error: Could not retrieve market depth</p>"
 
     def go_to_place_order(self, script_name, transaction: Literal['Buy', 'Sell']):
@@ -451,7 +441,6 @@ class SeleniumTMSClient:
             time.sleep(2)
         except Exception as e:
             logger.info(f"Failed to navigate to place order page: {e}")
-            self.driver.save_screenshot("place_order_failed.png")
             return False
 
     def go_to_order_entry(self):
@@ -460,7 +449,6 @@ class SeleniumTMSClient:
             time.sleep(2)
         except Exception as e:
             logger.info(f"Failed to navigate to order entry page: {e}")
-            self.driver.save_screenshot("order_entry_failed.png")
             return False
 
     def scrape_multiple_stocks(self, symbols=None):
