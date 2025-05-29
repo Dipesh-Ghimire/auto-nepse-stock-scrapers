@@ -10,7 +10,7 @@ from .forms import TMSLoginForm
 from .selenium_client import SeleniumTMSClient
 import logging
 from .utility import filter_stock_data
-logger = logging.getLogger("stocks")
+logger = logging.getLogger("tms")
 
 # TEMPORARY session cache (not production-safe)
 session_cache = {}

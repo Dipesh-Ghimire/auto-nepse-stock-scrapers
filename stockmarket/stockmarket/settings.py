@@ -156,6 +156,11 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        'tms': {
+            'handlers': ['file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
     },
 }
 
