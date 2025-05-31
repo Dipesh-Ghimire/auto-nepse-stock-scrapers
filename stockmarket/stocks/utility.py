@@ -235,7 +235,8 @@ def store_news_to_db_ml(news_data):
             logger.info(f"Saved news: {record['title']}")
 
         except Exception as e:
-            logger.error(f"Failed to save news: {record["title"]} | Error: {e}")
+            logger.error(f"Failed to save news: {record['title']} | Error: {e}")
+
 
 def get_latest_news_date():
     latest_news = (
