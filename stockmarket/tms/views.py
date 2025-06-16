@@ -31,7 +31,7 @@ def tms_login_view(request):
             #     "price_threshold": str(form.cleaned_data['price_threshold'])
             # }
             # request.session['order_data'] = order_data
-            client = SeleniumTMSClient(broker)
+            client = SeleniumTMSClient(broker, False)
             client.open_login_page()
             captcha_img = client.get_captcha_base64()
 
@@ -173,4 +173,54 @@ def place_order(request):
         except Exception as e:
             logger.exception("Error executing trade")
             return JsonResponse({"error": str(e)}, status=500)
-        
+
+@csrf_exempt
+def fetch_open_orders(request):
+    """
+    Fetches the order book for the logged-in user.
+    Returns a JSON response with the order book data.
+    """
+    client: SeleniumTMSClient = session_cache.get("client")
+    if not client:
+        return JsonResponse({"error": "Session expired. Please log in again."}, status=400)
+    
+    try:
+        order_book = client.scrape_open_orders()
+        return JsonResponse(order_book, safe=False, status=200)
+    except Exception as e:
+        logger.exception("Error fetching order book")
+        return JsonResponse({"error": str(e)}, status=500)
+
+@csrf_exempt
+def fetch_completed_orders(request):
+    """
+    Fetches the completed orders for the logged-in user.
+    Returns a JSON response with the completed orders data.
+    """
+    client: SeleniumTMSClient = session_cache.get("client")
+    if not client:
+        return JsonResponse({"error": "Session expired. Please log in again."}, status=400)
+    
+    try:
+        completed_orders = client.scrape_completed_orders()
+        return JsonResponse(completed_orders, safe=False, status=200)
+    except Exception as e:
+        logger.exception("Error fetching completed orders")
+        return JsonResponse({"error": str(e)}, status=500)
+    
+@csrf_exempt
+def cancel_order_book(request):
+    """
+    Cancels an order based on the provided order ID.
+    Returns a JSON response indicating success or failure.
+    """
+    client: SeleniumTMSClient = session_cache.get("client")
+    if not client:
+        return JsonResponse({"error": "Session expired. Please log in again."}, status=400)
+    
+    try:
+        client.cancel_all_open_orders()
+        return JsonResponse({"success": True, "message": "All open orders cancelled successfully."}, status=200)
+    except Exception as e:
+        logger.exception("Error cancelling order book")
+        return JsonResponse({"error": str(e)}, status=500)
