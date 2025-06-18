@@ -8,7 +8,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
-from selenium.common.exceptions import StaleElementReferenceException
+from selenium.common.exceptions import StaleElementReferenceException, NoSuchElementException
 import time
 import logging
 
@@ -27,6 +27,9 @@ class SeleniumTMSClient:
         self.login_url = f"https://tms{self.broker_number}.nepsetms.com.np/login"
         self.order_url = f"https://tms{self.broker_number}.nepsetms.com.np/tms/me/memberclientorderentry"
         self.order_book_url = f"{self.base_url}/tms/me/order-book-v3"
+        self.dp_holding_url = f"{self.base_url}/tms/me/dp-holding"
+        self.portfolio_data = []
+        self.eligible_portfolio = []
         self.order_entry_visited = False
         self.tracking_symbol = ["RURU", "NICA"]
         self.latest_scraped_data = {}
@@ -724,3 +727,74 @@ class SeleniumTMSClient:
         except Exception as e:
             logger.error(f"Error cancelling open orders: {e}")
             return {"error": str(e)}
+        
+    def scrape_dp_holding(self):
+        try:
+            self.driver.get(self.dp_holding_url)
+            time.sleep(5)
+            self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.k-grid-content table.k-grid-table")))
+            rows = self.driver.find_elements(By.CSS_SELECTOR, "table.k-grid-table tbody tr")
+            self.portfolio_data = []
+            for row in rows:
+                try:
+                    # Extract data from each column
+                    cells = row.find_elements(By.TAG_NAME, "td")
+                    
+                    if len(cells) >= 9:
+                        data = {
+                            'symbol': cells[1].find_element(
+                                By.CSS_SELECTOR, "span.table--view").text.strip(),
+                            'cds_total_balance': cells[2].text.strip(),
+                            'cds_free_balance': cells[3].text.strip(),
+                            'tms_balance': cells[4].text.strip(),
+                            'ltp': cells[7].text.strip(),
+                        }
+                        self.portfolio_data.append(data)
+
+                        self.eligible_portfolio = [ {**item, 'selling_quantity': int(item['cds_free_balance']) // 2} for item in self.portfolio_data if int(item['cds_free_balance']) > 19 ]
+                except (NoSuchElementException, IndexError) as e:
+                    logger.warning(f"Error parsing row: {e}")
+                    continue
+            logger.info(f"Scraped DP holding data for {len(self.portfolio_data)} stocks.")
+
+        except Exception as e:
+            logger.error(f"Error scraping DP holding: {e}")
+            return {"error": str(e)}
+        
+    def sell_full_portfolio(self):
+        """
+        Sells all stocks in the portfolio.
+        """
+        self.scrape_dp_holding()  # Ensure portfolio data is up-to-date
+        if not self.eligible_portfolio:
+            logger.info("No eligible stocks to sell.")
+            return {"error": "No eligible stocks to sell."}
+
+        for stock in self.eligible_portfolio:
+            try:
+                self.go_to_place_order(stock['symbol'], 'Sell')
+                quantity = stock['selling_quantity']
+                price = float(stock['ltp'].replace(',', ''))  # Convert LTP to float
+                self.execute_trade(stock['symbol'], 'Sell', quantity, price)
+                logger.info(f"Sell Order Placed {quantity} shares of {stock['symbol']} at {price}.")
+            except Exception as e:
+                logger.error(f"Error selling {stock['symbol']}: {e}")
+    
+    def sell_half_portfolio(self):
+        """
+        Sells half of the eligible stocks in the portfolio.
+        """
+        self.scrape_dp_holding()  # Ensure portfolio data is up-to-date
+        if not self.eligible_portfolio:
+            logger.info("No eligible stocks to sell.")
+            return {"error": "No eligible stocks to sell."}
+
+        for stock in self.eligible_portfolio:
+            try:
+                self.go_to_place_order(stock['symbol'], 'Sell')
+                quantity = stock['selling_quantity'] // 2
+                price = float(stock['ltp'].replace(',', ''))  # Convert LTP to float
+                self.execute_trade(stock['symbol'], 'Sell', quantity, price)
+                logger.info(f"Sell Order Placed {quantity} shares of {stock['symbol']} at {price}.")
+            except Exception as e:
+                logger.error(f"Error selling {stock['symbol']}: {e}")

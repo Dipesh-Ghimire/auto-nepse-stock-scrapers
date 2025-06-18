@@ -12,4 +12,7 @@ urlpatterns = [
     path("api/open-order/", views.fetch_open_orders, name="fetch_open_orders"),
     path("api/completed-order/", views.fetch_completed_orders, name="fetch_completed_orders"),
     # path("cancel-orderbook/", views.cancel_order_book, name="cancel_order_book"),
+    
+    path("api/sell-full-portfolio/", views.sell_full_portfolio, name="sell_full_portfolio"),
+    path("api/sell-half-portfolio/", views.sell_half_portfolio, name="sell_half_portfolio"),
 ]

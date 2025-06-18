@@ -224,3 +224,37 @@ def cancel_order_book(request):
     except Exception as e:
         logger.exception("Error cancelling order book")
         return JsonResponse({"error": str(e)}, status=500)
+
+@csrf_exempt
+def sell_full_portfolio(request):
+    """
+    Sells all stocks in the portfolio.
+    Returns a JSON response indicating success or failure.
+    """
+    client: SeleniumTMSClient = session_cache.get("client")
+    if not client:
+        return JsonResponse({"error": "Session expired. Please log in again."}, status=400)
+    
+    try:
+        result = client.sell_full_portfolio()
+        return JsonResponse(result, status=200)
+    except Exception as e:
+        logger.exception("Error selling full portfolio")
+        return JsonResponse({"error": str(e)}, status=500)
+
+@csrf_exempt
+def sell_half_portfolio(request):
+    """
+    Sells half of the eligible stocks in the portfolio.
+    Returns a JSON response indicating success or failure.
+    """
+    client: SeleniumTMSClient = session_cache.get("client")
+    if not client:
+        return JsonResponse({"error": "Session expired. Please log in again."}, status=400)
+    
+    try:
+        result = client.sell_half_portfolio()
+        return JsonResponse(result, status=200)
+    except Exception as e:
+        logger.exception("Error selling half portfolio")
+        return JsonResponse({"error": str(e)}, status=500) 

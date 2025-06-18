@@ -12,6 +12,13 @@
 
         {% include 'tms/watchlist.html' %}
 
+        <div>
+            <div class="btn-group mb-3" role="group">
+                <button class="btn btn-danger" onclick="sellFullPortfolio()">Sell Full Portfolio</button>
+                <button class="btn btn-warning" onclick="sellHalfPortfolio()">Sell Half Portfolio</button>
+            </div>
+        </div>
+
         <h2 class="mt-5">📈 Live Market Depth (Top Buyers & Sellers)</h2>
         <div style="margin: 1rem 0;">
             <button class="btn btn-primary" id="start" onclick="startFetching()">▶️</button>
@@ -163,6 +170,56 @@
                         alertBox.addClass('d-none').html('');
                     });
                 }, 8000);
+            }
+            function sellFullPortfolio() {
+                // Confirm before selling full portfolio
+                if (!confirm("Are you sure you want to sell your FULL portfolio? This action cannot be undone.")) {
+                    return;
+                }
+                // Make API call to sell full portfolio
+                showAlert("Selling full portfolio...", 'info');
+                fetch("/api/sell-full-portfolio/", {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showAlert("Full portfolio sold successfully!", 'success');
+                    } else {
+                        showAlert("Failed to sell full portfolio: " + data.error, 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error("Error selling full portfolio:", error);
+                    showAlert("Error selling full portfolio. Please try again.", 'danger');
+                });
+            }
+            function sellHalfPortfolio() {
+                // Confirm before selling half portfolio
+                if (!confirm("Are you sure you want to sell HALF of your portfolio? This action cannot be undone.")) {
+                    return;
+                }
+                fetch("/api/sell-half-portfolio/", {
+                    method: "GET",
+                    headers: {
+                        "Content-Type": "application/json"
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showAlert("Half portfolio sold successfully!", 'success');
+                    } else {
+                        showAlert("Failed to sell half portfolio: " + data.error, 'danger');
+                    }
+                })
+                .catch(error => {
+                    console.error("Error selling half portfolio:", error);
+                    showAlert("Error selling half portfolio. Please try again.", 'danger');
+                });
             }
 
         </script>
