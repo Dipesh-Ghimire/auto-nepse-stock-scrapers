@@ -8,7 +8,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import Select
-from selenium.common.exceptions import StaleElementReferenceException
+from selenium.common.exceptions import StaleElementReferenceException, NoSuchElementException
 import time
 import logging
 
@@ -25,6 +25,10 @@ class SeleniumTMSClient:
         self.headless = headless
         self.login_url = f"https://tms{self.broker_number}.nepsetms.com.np/login"
         self.order_url = f"https://tms{self.broker_number}.nepsetms.com.np/tms/me/memberclientorderentry"
+        self.order_book_url = f"{self.base_url}/tms/me/order-book-v3"
+        self.dp_holding_url = f"{self.base_url}/tms/me/dp-holding"
+        self.portfolio_data = []
+        self.eligible_portfolio = []
         self.order_entry_visited = False
         self.tracking_symbol = ["RURU", "NICA"]
         self.latest_scraped_data = {}
@@ -538,3 +542,257 @@ class SeleniumTMSClient:
     
     def get_latest_data(self):
         return self.latest_scraped_data
+    
+    def switch_tab(self,tab_name="Open"):
+        """
+        Clicks the appropriate tab (Open or Completed) and waits for it to activate.
+        """
+        tab_id = {
+            "Open": "nav-open-info-tab",
+            "Completed": "nav-completed-info-tab"
+        }[tab_name]
+
+        tab = self.driver.find_element(By.ID, tab_id)
+        tab.click()
+
+        # Wait until this tab is active
+        self.wait.until(EC.element_to_be_clickable((By.ID, tab_id)))
+    
+    def set_page_size_to_all(self):
+        try:
+            # Wait for the page size dropdown to be present
+            WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, "kendo-pager-page-sizes select"))
+            )
+
+            # Find the page size dropdown
+            page_size_dropdown = self.driver.find_element(By.CSS_SELECTOR, "kendo-pager-page-sizes select")
+
+            # Select the "All" option
+            select = Select(page_size_dropdown)
+            select.select_by_visible_text("All")
+
+            # Wait for the grid to reload with all records
+            WebDriverWait(self.driver, 10).until(
+                EC.invisibility_of_element_located((By.CSS_SELECTOR, "div.k-loading-mask"))
+            )
+        except Exception as e:
+            logger.error(f"Error setting page size to All: {e}")
+    
+    def scrape_open_orders(self):
+        self.driver.get(self.order_book_url)
+        time.sleep(2)
+        try:
+            # Default to Open tab
+            self.set_page_size_to_all()
+            # Wait for the grid to load
+            WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "k-grid-table"))
+            )
+            
+            # Find all order rows - they have class "k-master-row"
+            order_rows = self.driver.find_elements(By.CSS_SELECTOR, "tr.k-master-row")
+            
+            orders = []
+            
+            for row in order_rows:
+                # Extract data from each cell in the row
+                cells = row.find_elements(By.TAG_NAME, "td")
+                
+                # Skip the first two cells (hierarchy and checkbox)
+                order_data = {
+                    "S.N": cells[2].text.strip(),
+                    "ACTION": cells[3].text.strip(),
+                    "STATUS": cells[4].text.strip(),
+                    "CLIENT": cells[5].text.strip(),
+                    "CLIENT_NAME": cells[6].text.strip(),
+                    "SYMBOL": cells[7].text.strip(),
+                    "TYPE": cells[8].text.strip(),
+                    "QTY": cells[9].text.strip(),
+                    "TRADED_QTY": cells[10].text.strip(),
+                    "PRICE(NPR)": cells[11].text.strip(),
+                    "REM_QTY": cells[12].text.strip(),
+                    "VALUE": cells[13].text.strip(),
+                    "EXCHANGE_ORDER_ID": cells[14].text.strip(),
+                    "ORDER_TIME": cells[15].text.strip(),
+                    "ORDER_PLACED_BY": cells[16].text.strip()
+                }
+                orders.append(order_data)
+            # print all orders in loop
+            for order in orders:
+                print(order)
+            logger.info(f"Scraped {len(orders)} open orders.")
+            return orders
+        except Exception as e:
+            logger.error(f"Error scraping open orders: {e}")
+            return []
+        
+    def scrape_completed_orders(self):
+        self.driver.get(self.order_book_url)
+        time.sleep(2)
+        try:
+            self.switch_tab("Completed")
+            # Default to Open tab
+            self.set_page_size_to_all()
+            # Wait for the grid to load
+            WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "k-grid-table"))
+            )
+            
+            # Find all order rows - they have class "k-master-row"
+            order_rows = self.driver.find_elements(By.CSS_SELECTOR, "tr.k-master-row")
+            completed_orders = []
+            for row in order_rows:
+                # Check if the order is completed (CANCELLED)
+                status_cell = row.find_elements(By.TAG_NAME, "td")[2]  # STATUS is the 3rd column (index 2)
+                status = status_cell.text.strip()
+                # Extract data from each cell in the row
+                cells = row.find_elements(By.TAG_NAME, "td")
+                
+                order_data = {
+                    "S.N": cells[1].text.strip(),  # Index 1 (2nd column)
+                    "STATUS": status,
+                    "CLIENT": cells[3].text.strip(),
+                    "CLIENT_NAME": cells[4].text.strip(),
+                    "SYMBOL": cells[5].text.strip(),
+                    "TYPE": cells[6].text.strip(),
+                    "QTY": cells[7].text.strip(),
+                    "TRADED_QTY": cells[8].text.strip(),
+                    "PRICE(NPR)": cells[9].text.strip(),
+                    "REM_QTY": cells[10].text.strip(),
+                    "VALUE": cells[11].text.strip(),
+                    "EXCHANGE_ORDER_ID": cells[12].text.strip(),
+                    "ORDER_TIME": cells[13].text.strip(),
+                    "ORDER_PLACED_BY": cells[14].text.strip()
+                }
+                completed_orders.append(order_data)
+            # print all orders in loop
+            for order in completed_orders:
+                print(order)
+            logger.info(f"Scraped {len(completed_orders)} Completed orders.")
+            return completed_orders
+        except Exception as e:
+            logger.error(f"Error scraping Completed orders: {e}")
+            return []
+        
+    def cancel_all_open_orders(self):
+        """
+        Cancels all open orders for the logged-in user.
+        Returns a JSON response indicating success or failure.
+        """
+        try:
+            self.driver.get(self.order_book_url)
+            time.sleep(2)
+            self.set_page_size_to_all()
+            # Wait for the grid to load
+            WebDriverWait(self.driver, 10).until(
+                EC.presence_of_element_located((By.CLASS_NAME, "k-grid-table"))
+            )
+            
+            checkbox = self.wait.until(EC.presence_of_element_located((By.ID, "k-grid0-select-all")))
+
+            # Use JavaScript to set the checkbox and trigger the change event
+            self.driver.execute_script("""
+                const checkbox = arguments[0];
+                if (!checkbox.checked) {
+                    checkbox.click(); // This is important for UI sync
+                    const event = new Event('change', { bubbles: true });
+                    checkbox.dispatchEvent(event);
+                }
+            """, checkbox)
+            logger.info("Checkbox clicked and change event dispatched.")
+            
+            cancel_button = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[@title='Cancel Selected Orders']")))
+            cancel_button.click()
+            
+            # Wait for modal to be visible
+            time.sleep(1)
+            self.wait.until(EC.visibility_of_element_located((By.CLASS_NAME, "modal-dialog")))
+            # yes_button = self.wait.until(EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Yes')]")))
+            modal_footer = self.driver.find_element(By.CLASS_NAME, "modal-footer")
+            yes_button = modal_footer.find_element(By.XPATH, ".//button[normalize-space(text())='Yes']")
+
+            try:
+                yes_button.click()
+                logger.info("Clicked 'Yes' button successfully.")
+            except Exception as click_err:
+                logger.warning(f"Standard click failed: {click_err}, using JavaScript fallback.")
+                self.driver.execute_script("arguments[0].click();", yes_button)
+                logger.info("Clicked 'Yes' button using JS fallback.")
+            
+            logger.info("All open orders cancelled successfully.")
+            return {"success": True, "message": "All open orders cancelled successfully."}
+        except Exception as e:
+            logger.error(f"Error cancelling open orders: {e}")
+            return {"error": str(e)}
+        
+    def scrape_dp_holding(self):
+        try:
+            self.driver.get(self.dp_holding_url)
+            time.sleep(5)
+            self.wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, "div.k-grid-content table.k-grid-table")))
+            rows = self.driver.find_elements(By.CSS_SELECTOR, "table.k-grid-table tbody tr")
+            self.portfolio_data = []
+            for row in rows:
+                try:
+                    # Extract data from each column
+                    cells = row.find_elements(By.TAG_NAME, "td")
+                    
+                    if len(cells) >= 9:
+                        data = {
+                            'symbol': cells[1].find_element(
+                                By.CSS_SELECTOR, "span.table--view").text.strip(),
+                            'cds_total_balance': cells[2].text.strip(),
+                            'cds_free_balance': cells[3].text.strip(),
+                            'tms_balance': cells[4].text.strip(),
+                            'ltp': cells[7].text.strip(),
+                        }
+                        self.portfolio_data.append(data)
+
+                        self.eligible_portfolio = [ {**item, 'selling_quantity': int(item['cds_free_balance']) // 2} for item in self.portfolio_data if int(item['cds_free_balance']) > 19 ]
+                except (NoSuchElementException, IndexError) as e:
+                    logger.warning(f"Error parsing row: {e}")
+                    continue
+            logger.info(f"Scraped DP holding data for {len(self.portfolio_data)} stocks.")
+
+        except Exception as e:
+            logger.error(f"Error scraping DP holding: {e}")
+            return {"error": str(e)}
+        
+    def sell_full_portfolio(self):
+        """
+        Sells all stocks in the portfolio.
+        """
+        self.scrape_dp_holding()  # Ensure portfolio data is up-to-date
+        if not self.eligible_portfolio:
+            logger.info("No eligible stocks to sell.")
+            return {"error": "No eligible stocks to sell."}
+
+        for stock in self.eligible_portfolio:
+            try:
+                self.go_to_place_order(stock['symbol'], 'Sell')
+                quantity = stock['selling_quantity']
+                price = float(stock['ltp'].replace(',', ''))  # Convert LTP to float
+                self.execute_trade(stock['symbol'], 'Sell', quantity, price)
+                logger.info(f"Sell Order Placed {quantity} shares of {stock['symbol']} at {price}.")
+            except Exception as e:
+                logger.error(f"Error selling {stock['symbol']}: {e}")
+    
+    def sell_half_portfolio(self):
+        """
+        Sells half of the eligible stocks in the portfolio.
+        """
+        self.scrape_dp_holding()  # Ensure portfolio data is up-to-date
+        if not self.eligible_portfolio:
+            logger.info("No eligible stocks to sell.")
+            return {"error": "No eligible stocks to sell."}
+
+        for stock in self.eligible_portfolio:
+            try:
+                self.go_to_place_order(stock['symbol'], 'Sell')
+                quantity = stock['selling_quantity'] // 2
+                price = float(stock['ltp'].replace(',', ''))  # Convert LTP to float
+                self.execute_trade(stock['symbol'], 'Sell', quantity, price)
+                logger.info(f"Sell Order Placed {quantity} shares of {stock['symbol']} at {price}.")
+            except Exception as e:
+                logger.error(f"Error selling {stock['symbol']}: {e}")
