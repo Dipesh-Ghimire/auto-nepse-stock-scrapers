@@ -11,18 +11,22 @@
                         {% csrf_token %}
                         
                         {% for field in form %}
-                        <div class="mb-3">
-                            <label for="{{ field.id_for_label }}" class="form-label">
-                                {{ field.label }}
-                                {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
-                            </label>
-                            {{ field }}
-                            {% if field.help_text %}
-                                <small class="form-text text-muted">{{ field.help_text }}</small>
-                            {% endif %}
-                            {% for error in field.errors %}
-                                <div class="invalid-feedback d-block">{{ error }}</div>
-                            {% endfor %}
+                        <div class="mb-3 row">
+                            <div class="col-md-4">
+                                <label for="{{ field.id_for_label }}" class="form-label">
+                                    {{ field.label }}
+                                    {% if field.field.required %}<span class="text-danger">*</span>{% endif %}
+                                </label>
+                            </div>
+                            <div class="col-md-8">
+                                {{ field }}
+                                {% if field.help_text %}
+                                    <small class="form-text text-muted">{{ field.help_text }}</small>
+                                {% endif %}
+                                {% for error in field.errors %}
+                                    <div class="invalid-feedback d-block">{{ error }}</div>
+                                {% endfor %}
+                            </div>
                         </div>
                         {% endfor %}
                         
@@ -48,6 +52,12 @@
     }
     .btn {
         border-radius: 5px;
+    }
+    /* Ensure all inputs have the same width */
+    .row .col-md-8 input, 
+    .row .col-md-8 select, 
+    .row .col-md-8 textarea {
+        width: 100%;
     }
 </style>
 
