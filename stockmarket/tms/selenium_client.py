@@ -749,7 +749,7 @@ class SeleniumTMSClient:
                         }
                         self.portfolio_data.append(data)
 
-                        self.eligible_portfolio = [ {**item, 'selling_quantity': int(item['cds_free_balance']) // 2} for item in self.portfolio_data if int(item['cds_free_balance']) > 19 ]
+                        self.eligible_portfolio = [ {**item, 'selling_quantity': int(item['cds_free_balance'])} for item in self.portfolio_data if int(item['cds_free_balance']) > 19 ]
                 except (NoSuchElementException, IndexError) as e:
                     logger.warning(f"Error parsing row: {e}")
                     continue
