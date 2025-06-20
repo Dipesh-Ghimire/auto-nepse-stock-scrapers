@@ -15,4 +15,6 @@ urlpatterns = [
     
     path("api/sell-full-portfolio/", views.sell_full_portfolio, name="sell_full_portfolio"),
     path("api/sell-half-portfolio/", views.sell_half_portfolio, name="sell_half_portfolio"),
+
+    path("tms/portfolio/", views.my_dp_holdings, name="my_dp_holdings"),
 ]

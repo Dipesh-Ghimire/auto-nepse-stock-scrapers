@@ -1,0 +1,166 @@
+{% extends "base_generic.html" %}
+
+{% block content %}
+<div id="alert-box" class="alert d-none position-fixed top-0 end-0 m-3" style="z-index: 1055;" role="alert"></div>
+
+<div class="container mt-4">
+  <h2 class="mb-4">My Portfolio</h2>
+  <div class="table-responsive">
+    <table class="table table-striped table-hover table-bordered">
+      <thead class="thead-dark">
+        <tr>
+            <th scope="col">S.N.</th>
+          <th scope="col">Script Name</th>
+          <th scope="col">Quantity</th>
+          <th scope="col">LTP</th>
+          <th scope="col" style='width: 120px'>Enter Quantity (units/percentage)</th>
+          <th scope="col" style='width: 120px'>Action (Buy/Sell)</th>
+          <th scope="col">Auto Sell Order</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in dp_holdings %}
+          <tr>
+            <td class="font-weight-bold">{{ forloop.counter }}</td>
+            <td class="font-weight-bold">{{ item.symbol }}</td>
+            <td>{{ item.cds_free_balance }}</td>
+            <td>{{ item.ltp }}</td>
+            <td>
+              <input type="number" 
+                     class="form-control form-control-sm w-75" 
+                     min="10" 
+                     step="1"
+                     placeholder="units"  
+                     value="" 
+                     name="selling_quantity_{{ item.symbol }}"
+                     oninput="clearPercentage('{{ item.symbol }}')" />
+                <!-- Input for quantity persentage -->
+                <input type="number" 
+                         class="form-control form-control-sm mt-2 w-50" 
+                         min="1" 
+                         max="100" 
+                         step="1" 
+                         placeholder="%" 
+                         name="quantity_percentage_{{ item.symbol }}"
+                         oninput="clearUnits('{{ item.symbol }}')" />
+            </td>
+            <td>
+              <div class="btn-group btn-group-sm" role="group">
+                <button class="btn btn-success" onclick="placeBuyOrder('{{ item.symbol }}', '{{ item.cds_free_balance }}', '{{ item.ltp }}')">BUY</button>
+                <button class="btn btn-danger" onclick="placeSellOrder('{{ item.symbol }}', '{{ item.cds_free_balance }}', '{{ item.ltp }}')">SELL</button>
+              </div>
+            </td> 
+            <td>
+              <button class="btn btn-outline-primary btn-sm">Create Auto-Order</button>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+<script>
+function clearPercentage(symbol) {
+  const unitsInput = document.querySelector(`input[name="selling_quantity_${symbol}"]`);
+  const percentageInput = document.querySelector(`input[name="quantity_percentage_${symbol}"]`);
+  
+  if (unitsInput.value !== "") {
+    percentageInput.value = "";
+  }
+}
+
+function clearUnits(symbol) {
+  const unitsInput = document.querySelector(`input[name="selling_quantity_${symbol}"]`);
+  const percentageInput = document.querySelector(`input[name="quantity_percentage_${symbol}"]`);
+  
+  if (percentageInput.value !== "") {
+    unitsInput.value = "";
+  }
+}
+function showAlert(message, type = 'success') {
+                const alertBox = $('#alert-box');
+                
+                alertBox
+                    .removeClass('d-none alert-success alert-danger alert-warning alert-info')
+                    .addClass('alert-' + type)
+                    .html(message)
+                    .fadeIn();
+
+                setTimeout(() => {
+                    alertBox.fadeOut(() => {
+                        alertBox.addClass('d-none').html('');
+                    });
+                }, 8000);
+            }
+</script>
+<script>
+    async function placeOrder(symbol, price, quantity, transaction_type) {
+                try {
+                    const response = await fetch("/api/place-order/", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            script_name: symbol,
+                            price: price,
+                            quantity: quantity,
+                            transaction_type: transaction_type
+                            }),
+                    });
+                    const result = await response.json();
+                    if (result.success) {
+                        showAlert(`Order placed successfully: ${transaction_type} ${quantity} of ${symbol} at ${price}`, 'success')
+                    } else {
+                        showAlert(`Trade failed: ${result.error}`, 'danger');
+                    }
+
+                } catch (error) {
+                    console.error("Error executing trade:", error);
+                    alert("Error executing trade. Please try again.");
+                }
+            }
+    function placeBuyOrder(symbol, balance, ltp) {
+        const unitsInput = document.querySelector(`input[name="selling_quantity_${symbol}"]`);
+        const percentageInput = document.querySelector(`input[name="quantity_percentage_${symbol}"]`);
+        var quantity= 0;
+        if (!unitsInput.value && !percentageInput.value) {
+            showAlert("Please enter a quantity or percentage to buy.", 'warning');
+            return;
+        }else if (unitsInput.value){
+            quantity = unitsInput.value;
+        } else {
+            var quantityPercentage = percentageInput.value;
+            // calculate total quantity based on percentage
+            quantity = Math.round((quantityPercentage / 100) * parseInt(balance));
+        }
+        if (quantity > 9) {
+            placeOrder(symbol, ltp, quantity, 'Buy');
+        }
+        else {
+            showAlert("Minimum quantity to buy is 10 units.", 'warning');
+        }
+    }
+    function placeSellOrder(symbol, balance, ltp) {
+        const unitsInput = document.querySelector(`input[name="selling_quantity_${symbol}"]`);
+        const percentageInput = document.querySelector(`input[name="quantity_percentage_${symbol}"]`);
+        var quantity= 0;
+        if (!unitsInput.value && !percentageInput.value) {
+            showAlert("Please enter a quantity or percentage to sell.", 'warning');
+            return;
+        }else if (unitsInput.value){
+            quantity = unitsInput.value;
+        } else {
+            var quantityPercentage = percentageInput.value;
+            // calculate total quantity based on percentage
+            quantity = Math.round((quantityPercentage / 100) * parseInt(balance));
+        }
+        if (quantity > 9) {
+            placeOrder(symbol, ltp, quantity, 'Sell');
+        }
+        else {
+            showAlert("Minimum quantity to sell is 10 units.", 'warning');
+        }
+    }
+</script>
+{% endblock %}

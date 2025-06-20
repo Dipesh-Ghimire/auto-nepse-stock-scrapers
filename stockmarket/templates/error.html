@@ -1,0 +1,14 @@
+<!-- File: stockmarket/templates/error.html -->
+{% extends "base_generic.html" %}
+{% block content %}
+<div class="container mt-4">
+  <h2 class="mb-4">Error Page</h2>
+  <div class="text-center">
+    <img src="{% static 'images/error.png' %}" alt="Error Image" class="img-fluid mb-4" style="max-width: 300px;">
+  </div>
+  <div class="alert alert-danger" role="alert">
+    <h4 class="alert-heading">Error</h4>
+    <p>An error occurred while processing your request. Please try again later.</p>
+  </div>
+</div>
+{% endblock %}

@@ -152,7 +152,7 @@ def place_order(request):
     """
     client: SeleniumTMSClient = session_cache.get("client")
     if not client:
-        return JsonResponse({"error": "Session expired. Please log in again."}, status=400)
+        return redirect("tms_login")
     if request.method == "POST":
         try:
             client.stop_scraping_flag = True # stop scraping thread
@@ -182,7 +182,7 @@ def fetch_open_orders(request):
     """
     client: SeleniumTMSClient = session_cache.get("client")
     if not client:
-        return JsonResponse({"error": "Session expired. Please log in again."}, status=400)
+        return redirect("tms_login")
     
     try:
         order_book = client.scrape_open_orders()
@@ -199,7 +199,7 @@ def fetch_completed_orders(request):
     """
     client: SeleniumTMSClient = session_cache.get("client")
     if not client:
-        return JsonResponse({"error": "Session expired. Please log in again."}, status=400)
+        return redirect("tms_login")
     
     try:
         completed_orders = client.scrape_completed_orders()
@@ -216,7 +216,7 @@ def cancel_order_book(request):
     """
     client: SeleniumTMSClient = session_cache.get("client")
     if not client:
-        return JsonResponse({"error": "Session expired. Please log in again."}, status=400)
+        return redirect("tms_login")
     
     try:
         client.cancel_all_open_orders()
@@ -233,7 +233,7 @@ def sell_full_portfolio(request):
     """
     client: SeleniumTMSClient = session_cache.get("client")
     if not client:
-        return JsonResponse({"error": "Session expired. Please log in again."}, status=400)
+        return redirect("tms_login")
     
     try:
         result = client.sell_full_portfolio()
@@ -250,7 +250,7 @@ def sell_half_portfolio(request):
     """
     client: SeleniumTMSClient = session_cache.get("client")
     if not client:
-        return JsonResponse({"error": "Session expired. Please log in again."}, status=400)
+        return redirect("tms_login")
     
     try:
         result = client.sell_half_portfolio()
@@ -258,3 +258,22 @@ def sell_half_portfolio(request):
     except Exception as e:
         logger.exception("Error selling half portfolio")
         return JsonResponse({"error": str(e)}, status=500) 
+    
+@csrf_exempt
+def my_dp_holdings(request):
+    """
+    Fetches the Demat holdings for the logged-in user.
+    Returns a django template response with the Demat holdings data.
+    """
+    client: SeleniumTMSClient = session_cache.get("client")
+    if not client:
+        return redirect("tms_login")
+    
+    try:
+        if not client.portfolio_data:
+            # If portfolio data is not already fetched, scrape it
+            client.scrape_dp_holding()
+        return render(request, "tms/portfolio.html", {"dp_holdings": client.portfolio_data})
+    except Exception as e:
+        logger.exception("Error fetching Demat holdings")
+        return render(request, "error.html", {"error": str(e)}, status=500)
