@@ -23,6 +23,7 @@ class SeleniumTMSClient:
         self.password = None
         self.driver = self._init_driver(headless)
         self.headless = headless
+        self.base_url = f"https://tms{self.broker_number}.nepsetms.com.np"
         self.login_url = f"https://tms{self.broker_number}.nepsetms.com.np/login"
         self.order_url = f"https://tms{self.broker_number}.nepsetms.com.np/tms/me/memberclientorderentry"
         self.order_book_url = f"{self.base_url}/tms/me/order-book-v3"
@@ -33,6 +34,7 @@ class SeleniumTMSClient:
         self.tracking_symbol = ["RURU", "NICA"]
         self.latest_scraped_data = {}
         self.stop_scraping_flag = False
+        self.wait = WebDriverWait(self.driver, 10)
 
     def _init_driver(self, headless):
         options = Options()
