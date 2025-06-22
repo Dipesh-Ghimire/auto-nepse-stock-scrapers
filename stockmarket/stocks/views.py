@@ -1,4 +1,4 @@
-import json
+from django.contrib.auth.decorators import login_required
 import pandas as pd
 from statsmodels.tsa.arima.model import ARIMA
 from django.shortcuts import render,redirect
@@ -99,6 +99,7 @@ def price_history(request, id):
     price_history = PriceHistory.objects.filter(company=company)
     return render(request, 'stocks/price_history.html', {'company': company, 'price_history': price_history})
 
+@login_required
 def price_history_list(request):
     price_list = PriceHistory.objects.select_related('company').order_by('-date')
     paginator = Paginator(price_list, 25)  # Show 25 records per page
@@ -108,10 +109,11 @@ def price_history_list(request):
 
     return render(request, 'stocks/price_history_list.html', {'page_obj': page_obj,})
 
+@login_required
 def company_list(request):
     companies = CompanyProfile.objects.all()
     return render(request, 'stocks/company_list.html', {'companies': companies})
-
+@login_required
 def company_news_list(request):
     news = CompanyNews.objects.all()
     return render(request, 'stocks/company_news_list.html', {'news': news})

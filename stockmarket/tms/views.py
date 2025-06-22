@@ -4,7 +4,7 @@ from django.http import JsonResponse
 import json
 import os
 from django.views.decorators.csrf import csrf_exempt
-
+from django.contrib.auth.decorators import login_required
 from stockmarket import settings
 from .forms import TMSLoginForm
 from .selenium_client import SeleniumTMSClient
@@ -15,6 +15,7 @@ logger = logging.getLogger("tms")
 # TEMPORARY session cache (not production-safe)
 session_cache = {}
 
+@login_required
 def tms_login_view(request):
     if request.method == "POST":
         form = TMSLoginForm(request.POST)
@@ -52,7 +53,7 @@ def tms_login_view(request):
             client.close()
             session_cache.pop("client", None)
     return render(request, "tms/login_form.html", {"form": form})
-
+@login_required
 def tms_captcha_page(request):
     client: SeleniumTMSClient = session_cache.get("client")
     broker = session_cache.get("broker")
@@ -69,7 +70,8 @@ def tms_captcha_page(request):
     })
 
 
-@csrf_exempt
+@csrf_exempt 
+@login_required
 def submit_captcha(request):
     if request.method == "POST":
         captcha_text = request.POST.get("captcha")
@@ -260,6 +262,7 @@ def sell_half_portfolio(request):
         return JsonResponse({"error": str(e)}, status=500) 
     
 @csrf_exempt
+@login_required
 def my_dp_holdings(request):
     """
     Fetches the Demat holdings for the logged-in user.
