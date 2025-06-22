@@ -21,4 +21,5 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('stocks.urls')),  # Include the URLs from the stocks app
     path('', include('tms.urls')),
+    path('accounts/', include('accounts.urls')),  # Include the URLs from the accounts app
 ]
