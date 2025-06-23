@@ -1,0 +1,163 @@
+{% extends "base_generic.html" %}
+
+{% block title %}Meroshare Accounts{% endblock %}
+
+{% block content %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<div class="container mt-4">
+    <h2 class="mb-4">Your MeroShare Accounts</h2>
+
+    <div class="mb-3">
+        <a href="{% url 'meroshare:account_create' %}" class="btn btn-primary">Add New Account</a>
+    </div>
+
+    {% if accounts %}
+        <div class="table-responsive">
+            <table class="table table-bordered table-hover">
+                <thead class="thead-dark">
+                    <tr>
+                        <th> S.N. </th>
+                        <th>Alias Name</th>
+                        <th>DP</th>
+                        <th>Username</th>
+                        <th>CRN</th>
+                        <th>Auto IPO Apply</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for account in accounts %}
+                    <tr>
+                        <td>{{ forloop.counter }}</td>
+                        <td>{{ account.alias_name|capfirst }}</td>
+                        <td>{{ account.dp }}</td>
+                        <td>{{ account.username }}</td>
+                        <td>
+                            {{ account.crn|slice:":2" }}******{{ account.crn|slice:"-2:" }}
+                        </td>
+                        {% comment %} <td>
+                            {% if account.auto_ipo_apply %}
+                                <span class="badge bg-success">Enabled</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Disabled</span>
+                            {% endif %}
+                        </td> {% endcomment %}
+                        <td>
+                          <form class="toggle-form" action="{% url 'meroshare:toggle_auto_ipo' account.pk %}" method="post">
+                              {% csrf_token %}
+                              <button type="submit" class="btn btn-sm {% if account.auto_ipo_apply %}btn-success{% else %}btn-outline-secondary{% endif %}">
+                                  {% if account.auto_ipo_apply %}
+                                      <i class="fas fa-toggle-on"></i> On
+                                  {% else %}
+                                      <i class="fas fa-toggle-off"></i> Off
+                                  {% endif %}
+                              </button>
+                          </form>
+                      </td>
+                        <td>
+                            <a href="{% url 'meroshare:account_update' account.pk %}" 
+                                class="btn btn-sm btn-warning me-2" 
+                                title="Edit">
+                                <i class="fas fa-edit"></i>
+                                </a>
+                            <a href="#" 
+                                class="btn btn-sm btn-danger delete-btn" 
+                                data-name="{{ account.alias_name }}" 
+                                data-url="{% url 'meroshare:account_delete' account.id %}"
+                                title="Delete">
+                                <i class="fas fa-trash-alt"></i>
+                                </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="alert alert-info">No accounts added yet.</div>
+    {% endif %}
+</div>
+
+<style>
+    .btn-sm i {
+    transition: transform 0.2s;
+}
+.btn-sm:hover i {
+    transform: scale(1.2);
+}
+</style>
+<!-- Modal for Delete Confirmation -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Delete</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete <span id="accountName"></span>?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form id="deleteForm" method="post">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">Yes, Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Handle all delete buttons
+  document.querySelectorAll('.delete-btn').forEach(button => {
+    button.addEventListener('click', function(e) {
+      e.preventDefault();
+      const accountName = this.getAttribute('data-name');
+      const deleteUrl = this.getAttribute('data-url');
+      
+      // Set the account name in modal
+      document.getElementById('accountName').textContent = accountName;
+      
+      // Set the form action
+      document.getElementById('deleteForm').action = deleteUrl;
+      
+      // Show the modal
+      const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+      modal.show();
+    });
+  });
+});
+</script>
+<script>
+$(document).ready(function() {
+    $('.toggle-form').submit(function(e) {
+        e.preventDefault();
+        var form = $(this);
+        
+        $.ajax({
+            type: form.attr('method'),
+            url: form.attr('action'),
+            data: form.serialize(),
+            success: function(data) {
+                if(data.success) {
+                    // Toggle button appearance
+                    var btn = form.find('button');
+                    btn.toggleClass('btn-success btn-outline-secondary');
+                    
+                    // Toggle icon and text
+                    var icon = btn.find('i');
+                    if(icon.hasClass('fa-toggle-on')) {
+                        icon.removeClass('fa-toggle-on').addClass('fa-toggle-off');
+                        btn.html('<i class="fas fa-toggle-off"></i> Off');
+                    } else {
+                        icon.removeClass('fa-toggle-off').addClass('fa-toggle-on');
+                        btn.html('<i class="fas fa-toggle-on"></i> On');
+                    }
+                }
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
