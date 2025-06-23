@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'accounts',
+    'meroshare',
     'stocks',
     'tms',
     'django_celery_beat',
@@ -185,6 +186,8 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_RESULT_BACKEND = 'django-db'
 CELERY_BEAT_SCHEDULER = 'django_celery_beat.schedulers:DatabaseScheduler'
+
+FERNET_KEY = os.getenv('FERNET_KEY', 'WbiSTqzhc2vqbRi554DAoR5k54_LzmYbQaN3KGlgggY=')
 
 # Secure cookies and HSTS settings
 # SECURE_SSL_REDIRECT = True

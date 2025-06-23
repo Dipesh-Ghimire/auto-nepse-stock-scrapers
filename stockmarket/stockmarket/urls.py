@@ -19,7 +19,8 @@ from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('stocks.urls')),  # Include the URLs from the stocks app
+    path('', include('stocks.urls')),
     path('', include('tms.urls')),
-    path('accounts/', include('accounts.urls')),  # Include the URLs from the accounts app
+    path('accounts/', include('accounts.urls')),
+    path('meroshare/', include('meroshare.urls')),
 ]

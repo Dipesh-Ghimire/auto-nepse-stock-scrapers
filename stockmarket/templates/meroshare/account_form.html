@@ -1,0 +1,300 @@
+{% extends "base_generic.html" %} {% block title %}Meroshare Form{% endblock %}
+{% block content %}
+
+<div class="container mt-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-header bg-primary text-white">
+          <h2 class="mb-0">Account Form</h2>
+        </div>
+        <div class="card-body">
+          <form method="post">
+            {% csrf_token %}
+
+            <!-- Alias Field -->
+            <div class="form-group row mb-3">
+              <label
+                for="{{ form.alias_name.id_for_label }}"
+                class="col-md-3 col-form-label"
+                >Alias Name</label
+              >
+              <div class="col-md-9">{{ form.alias_name }}</div>
+            </div>
+
+            <!-- DP Field-->
+            <div class="form-group row mb-3">
+              <label for="dp-select" class="col-md-3 col-form-label"
+                >DP Number</label
+              >
+              <div class="col-md-9">
+                <div
+                  class="input-group"
+                  style="display: flex; flex-wrap: nowrap"
+                >
+                  {{ form.dp }}
+                </div>
+                {% if form.dp.errors %}
+                <div class="text-danger">{{ form.dp.errors }}</div>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="form-group row mb-3">
+              <label
+                for="{{ form.username.id_for_label }}"
+                class="col-md-3 col-form-label"
+                >Username</label
+              >
+              <div class="col-md-9">
+                {{ form.username }} {% if form.username.errors %}
+                <small class="text-danger">{{ form.username.errors }}</small>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="form-group row mb-3">
+              <label
+                for="{{ form.password.id_for_label }}"
+                class="col-md-3 col-form-label"
+                >Password</label
+              >
+              <div class="col-md-9">
+                {{ form.password }} {% if form.password.errors %}
+                <small class="text-danger">{{ form.password.errors }}</small>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="form-group row mb-3">
+              <label
+                for="{{ form.crn.id_for_label }}"
+                class="col-md-3 col-form-label"
+                >CRN</label
+              >
+              <div class="col-md-9">
+                <div class="input-group">
+                  {{ form.crn }}
+                  <div class="input-group-append">
+                    <button
+                      class="btn btn-outline-secondary toggle-password"
+                      type="button"
+                    >
+                      <i class="fas fa-eye"></i>
+                    </button>
+                  </div>
+                </div> 
+                {% if form.crn.errors %}
+                <small class="text-danger">{{ form.crn.errors }}</small>
+                {% endif %}
+              </div>
+            </div>
+
+            <div class="form-group row mb-3">
+              <label
+                for="{{ form.pin.id_for_label }}"
+                class="col-md-3 col-form-label"
+                >PIN</label
+              >
+              <div class="col-md-9">
+                <div class="input-group">
+                  {{ form.pin }}
+                  <div class="input-group-append">
+                    <button
+                      class="btn btn-outline-secondary toggle-password"
+                      type="button"
+                    >
+                      <i class="fas fa-eye"></i>
+                    </button>
+                  </div>
+                </div>
+                {% if form.pin.errors %}
+                <div class="invalid-feedback d-block">
+                  {{ form.pin.errors }}
+                </div>
+                {% endif %}
+              </div>
+            </div>
+            <div class="form-group row mb-3">
+              <div class="col-md-9 offset-md-3">
+                <div class="form-check form-switch">
+                  {{ form.auto_ipo_apply }}
+                  <label
+                    class="form-check-label switch"
+                    for="{{ form.auto_ipo_apply.id_for_label }}"
+                  >
+                    <span class="slider round"></span>
+                    <span class="toggle-text">Auto Apply for IPO</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-group row mb-3">
+              <div class="col-md-9 offset-md-3">
+                <button type="submit" class="btn btn-primary mr-2">
+                  <i class="fas fa-save"></i> Save
+                </button>
+                <a
+                  href="{% url 'meroshare:account_list' %}"
+                  class="btn btn-secondary"
+                >
+                  <i class="fas fa-arrow-left"></i> Back to List
+                </a>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add these to your base template or here -->
+<link
+  href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css"
+  rel="stylesheet"
+/>
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css"
+/>
+<style>
+  .select2-container--default .select2-selection--single {
+    height: calc(1.5em + 0.75rem + 2px);
+    border: 1px solid #ced4da;
+    border-radius: 0.25rem 0 0 0.25rem;
+  }
+  .select2-container--default
+    .select2-selection--single
+    .select2-selection__arrow {
+    height: calc(1.5em + 0.75rem + 2px);
+  }
+  .select2-container--default
+    .select2-selection--single
+    .select2-selection__rendered {
+    line-height: calc(1.5em + 0.75rem + 2px);
+  }
+  .select2-container {
+    width: 100% !important;
+  }
+  .input-group-append button {
+    border-radius: 0 0.25rem 0.25rem 0;
+  }
+
+  /* Dark theme for Select2 */
+  .select2-container--default .select2-selection--single {
+    background-color: #343a40;
+    border-color: #454d55;
+    color: #fff;
+  }
+
+  .select2-container--default
+    .select2-selection--single
+    .select2-selection__rendered {
+    color: #fff;
+  }
+
+  .select2-container--default
+    .select2-selection--single
+    .select2-selection__placeholder {
+    color: #adb5bd;
+  }
+
+  .select2-container--default
+    .select2-selection--single
+    .select2-selection__arrow
+    b {
+    border-color: #fff transparent transparent transparent;
+  }
+
+  .select2-container--default.select2-container--open
+    .select2-selection--single
+    .select2-selection__arrow
+    b {
+    border-color: transparent transparent #fff transparent;
+  }
+
+  /* Dropdown menu */
+  .select2-container--default .select2-results__option {
+    background-color: #343a40;
+    color: #fff;
+  }
+
+  .select2-container--default
+    .select2-results__option--highlighted[aria-selected] {
+    background-color: #495057;
+    color: #fff;
+  }
+
+  .select2-container--default .select2-search--dropdown .select2-search__field {
+    background-color: #454d55;
+    border-color: #454d55;
+    color: #fff;
+  }
+
+  /* For the dropdown when open */
+  .select2-dropdown {
+    background-color: #343a40;
+    border-color: #454d55;
+  }
+
+  /* For the clear button */
+  .select2-container--default
+    .select2-selection--single
+    .select2-selection__clear {
+    color: #adb5bd;
+    font-size: 22px;
+  }
+</style>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script>
+  $(document).ready(function () {
+    // Initialize Select2 for DP field with search functionality
+    $("#dp-select").select2({
+      placeholder: "Select or search DP (code or name)",
+      allowClear: true,
+      width: "100%",
+      matcher: function (params, data) {
+        // If there's no search term, return all options
+        if ($.trim(params.term) === "") {
+          return data;
+        }
+
+        // Check if the search term matches code or name
+        if (data.text.toLowerCase().includes(params.term.toLowerCase())) {
+          return data;
+        }
+
+        // Return null if no match
+        return null;
+      },
+    });
+
+    // Clear button functionality
+    $("#clear-dp").click(function () {
+      $("#dp-select").val(null).trigger("change");
+    });
+
+    // Focus on search field when dropdown opens
+    $("#dp-select").on("select2:open", function () {
+      $(".select2-search__field")[0].focus();
+    });
+
+    // Toggle password visibility
+    $(".toggle-password").click(function () {
+      const input = $(this).closest(".input-group").find("input");
+      const icon = $(this).find("i");
+      if (input.attr("type") === "password") {
+        input.attr("type", "text");
+        icon.removeClass("fa-eye").addClass("fa-eye-slash");
+      } else {
+        input.attr("type", "password");
+        icon.removeClass("fa-eye-slash").addClass("fa-eye");
+      }
+    });
+  });
+</script>
+{% endblock %} 
