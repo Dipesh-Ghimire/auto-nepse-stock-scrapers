@@ -175,6 +175,11 @@ LOGGING = {
             'level': 'INFO',
             'propagate': False,
         },
+        'meroshare': {
+            'handlers': ['file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
     },
 }
 

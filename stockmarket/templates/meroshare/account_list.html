@@ -35,13 +35,6 @@
                         <td>
                             {{ account.crn|slice:":2" }}******{{ account.crn|slice:"-2:" }}
                         </td>
-                        {% comment %} <td>
-                            {% if account.auto_ipo_apply %}
-                                <span class="badge bg-success">Enabled</span>
-                            {% else %}
-                                <span class="badge bg-secondary">Disabled</span>
-                            {% endif %}
-                        </td> {% endcomment %}
                         <td>
                           <form class="toggle-form" action="{% url 'meroshare:toggle_auto_ipo' account.pk %}" method="post">
                               {% csrf_token %}
@@ -67,6 +60,7 @@
                                 title="Delete">
                                 <i class="fas fa-trash-alt"></i>
                                 </a>
+                            <button class="btn btn-primary apply-ipo-btn" data-username="{{ account.username }}" data-shares="10">Apply IPO</button>
                         </td>
                     </tr>
                     {% endfor %}
@@ -156,6 +150,37 @@ $(document).ready(function() {
                     }
                 }
             }
+        });
+    });
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const buttons = document.querySelectorAll('.apply-ipo-btn');
+    buttons.forEach(button => {
+        button.addEventListener('click', function () {
+            const username = this.dataset.username;
+            const shares = this.dataset.shares;
+
+            fetch("{% url 'meroshare:apply_ipo' %}", {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    username: username,
+                    number_of_shares: shares
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                alert(data.message);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while applying for IPO.');
+            });
         });
     });
 });

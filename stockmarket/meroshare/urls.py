@@ -9,4 +9,5 @@ urlpatterns = [
     path('update/<int:pk>/', views.account_update, name='account_update'),
     path('delete/<int:pk>/', views.account_delete, name='account_delete'),
     path('account/<int:pk>/toggle-auto-ipo/', views.toggle_auto_ipo, name='toggle_auto_ipo'),
+    path('apply-ipo/', views.apply_ipo, name='apply_ipo'),
 ]
