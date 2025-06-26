@@ -17,4 +17,12 @@ urlpatterns = [
     path("api/sell-half-portfolio/", views.sell_half_portfolio, name="sell_half_portfolio"),
 
     path("tms/portfolio/", views.my_dp_holdings, name="my_dp_holdings"),
+    
+    path("tms/accounts/", views.tms_account_list, name="tms_account_list"),
+    path("tms/accounts/create/", views.tms_account_create, name="tms_account_create"),
+    path("tms/accounts/<int:pk>/update/", views.tms_account_update, name="tms_account_update"),
+    path("tms/accounts/<int:pk>/delete/", views.tms_account_delete, name="tms_account_delete"),
+
+    path("tms/login/<int:pk>/", views.tms_account_login, name="tms_account_login"),
+    path("tms/api/primary-login/", views.tms_primary_login_api, name="tms_primary_login_api"),
 ]

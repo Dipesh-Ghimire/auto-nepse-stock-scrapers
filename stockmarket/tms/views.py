@@ -8,6 +8,8 @@ from django.contrib.auth.decorators import login_required
 from stockmarket import settings
 from .forms import TMSLoginForm
 from .selenium_client import SeleniumTMSClient
+from .models import TMSAccount
+from .forms import TMSLoginForm, TMSAccountForm
 import logging
 from .utility import filter_stock_data
 logger = logging.getLogger("tms")
@@ -280,3 +282,117 @@ def my_dp_holdings(request):
     except Exception as e:
         logger.exception("Error fetching Demat holdings")
         return render(request, "error.html", {"error": str(e)}, status=500)
+    
+@csrf_exempt
+@login_required
+def tms_account_list(request):
+    """
+    Displays the list of TMS accounts for the logged-in user.
+    """
+    accounts = TMSAccount.objects.filter(user=request.user)
+    hit_client_api = True # Check if the client is already in session_cache
+    if session_cache.get("client"):
+        hit_client_api = False
+    return render(request, "tms/account_list.html", {"accounts": accounts, "hit_client_api": hit_client_api})
+
+@csrf_exempt
+@login_required
+def tms_account_create(request):
+    """
+    Creates a new TMS account for the logged-in user.
+    """
+    if request.method == "POST":
+        form = TMSAccountForm(request.POST)
+        if form.is_valid():
+            account = form.save(commit=False)
+            account.user = request.user
+            account.save()
+            return redirect("tms_account_list")
+    else:
+        form = TMSAccountForm()
+    return render(request, "tms/account_form.html", {"form": form})
+
+@csrf_exempt
+@login_required
+def tms_account_update(request, pk):
+    """
+    Updates an existing TMS account for the logged-in user.
+    """
+    account = TMSAccount.objects.get(pk=pk, user=request.user)
+    if request.method == "POST":
+        form = TMSAccountForm(request.POST, instance=account)
+        if form.is_valid():
+            form.save()
+            return redirect("tms_account_list")
+    else:
+        form = TMSAccountForm(instance=account)
+    return render(request, "tms/account_form.html", {"form": form})
+
+@csrf_exempt
+@login_required
+def tms_account_delete(request, pk):
+    """
+    Deletes a TMS account for the logged-in user.
+    """
+    account = TMSAccount.objects.get(pk=pk, user=request.user)
+    if request.method == "POST":
+        account.delete()
+        return redirect("tms_account_list")
+    return render(request, "tms/account_confirm_delete.html", {"account": account})
+
+@csrf_exempt
+@login_required
+def tms_account_login(request, pk):
+    """
+    Logs in to the primary TMS account for the logged-in user.
+    """
+    client = session_cache.get("client")
+    account = TMSAccount.objects.filter(user=request.user, pk=pk).first()
+    if not account:
+        return JsonResponse({"error": "No primary account found."}, status=404)
+    if client and session_cache["captcha_img"] is not None:
+        client.fill_credentials(account.username, account.password)
+        return redirect("tms_captcha_page")
+    
+    
+    if session_cache.get("client"):
+        client = session_cache["client"]
+    else:
+        client = SeleniumTMSClient(account.broker_number, False)
+
+    client.open_login_page()
+    captcha_img = client.get_captcha_base64()
+    client.fill_credentials(account.username, account.password)
+    session_cache["client"] = client  # store client for next step
+    session_cache["broker"] = account.broker_number
+    session_cache["captcha_img"] = captcha_img
+    return redirect("tms_captcha_page")
+
+@login_required
+def tms_primary_login_api(request):
+    """
+    API endpoint to log in to the primary TMS account for the logged-in user.
+    """
+    try:
+        primary_account = TMSAccount.objects.filter(user=request.user, is_primary=True).first()
+        if not primary_account:
+            return JsonResponse({"error": "No primary account found."}, status=404)
+        if session_cache.get("client"):
+            client = session_cache["client"]
+        else:
+            client = SeleniumTMSClient(primary_account.broker_number, False)
+        client.open_login_page()
+        captcha_img = client.get_captcha_base64()
+        client.fill_credentials(primary_account.username, primary_account.password)
+        session_cache["client"] = client  # store client for next step
+        session_cache["broker"] = primary_account.broker_number
+        session_cache["captcha_img"] = captcha_img
+        
+        return JsonResponse({
+            "success": True,
+            "message": "Primary account login initiated.",
+            "captcha_img": captcha_img,
+            "broker": primary_account.broker_number
+        }, status=200)
+    except TMSAccount.DoesNotExist:
+        return JsonResponse({"error": "Primary account does not exist."}, status=404)

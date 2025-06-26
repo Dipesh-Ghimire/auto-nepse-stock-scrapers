@@ -1,0 +1,114 @@
+{% extends 'base_generic.html' %}
+
+{% block content %}
+<h2>Your TMS Accounts</h2>
+<a href="{% url 'tms_account_create' %}" class="btn btn-primary">Add New Account</a>
+
+<table class="table">
+    <thead>
+        <tr>
+            <th>S.N.</th>
+            <th>Broker Number</th>
+            <th>Username</th>
+            <th>Actions</th>
+            <th>Login</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for account in accounts %}
+        <tr>
+            <td>{{ forloop.counter }}</td>
+            <td>{{ account.broker_number }}</td>
+            <td>{{ account.username }}{% if account.is_primary %}
+                <span class="badge bg-primary">Primary</span>
+                {% endif %}</td>
+            <td>
+                <a href="{% url 'tms_account_update' account.pk %}" class="btn btn-warning"><i class="fas fa-edit"></i></a>
+                <a href="#" 
+                    class="btn btn-sm btn-danger delete-btn" 
+                    data-name="{{ account.username }}" 
+                    data-url="{% url 'tms_account_delete' account.pk %}"
+                    title="Delete">
+                    <i class="fas fa-trash-alt"></i>
+                </a>
+            </td>
+            <td>
+              <a href="{% url 'tms_account_login' account.pk %}" class="btn btn-success">
+                <i class="fas fa-sign-in-alt"></i> Login
+              </a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="3">No accounts found.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<!-- Modal for Delete Confirmation -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Delete</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        <p>Are you sure you want to delete <span id="accountName"></span>?</p>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <form id="deleteForm" method="post">
+          {% csrf_token %}
+          <button type="submit" class="btn btn-danger">Yes, Delete</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Handle all delete buttons
+  document.querySelectorAll('.delete-btn').forEach(button => {
+    button.addEventListener('click', function(e) {
+      e.preventDefault();
+      const accountName = this.getAttribute('data-name');
+      const deleteUrl = this.getAttribute('data-url');
+      
+      // Set the account name in modal
+      document.getElementById('accountName').textContent = accountName;
+      
+      // Set the form action
+      document.getElementById('deleteForm').action = deleteUrl;
+      
+      // Show the modal
+      const modal = new bootstrap.Modal(document.getElementById('deleteModal'));
+      modal.show();
+    });
+  });
+});
+</script>
+<script>
+{% comment %} hit this if hit_client_api is True {% endcomment %}
+{% if hit_client_api %}
+ document.addEventListener('DOMContentLoaded', function() {
+    // Make the API call
+    fetch('{% url "tms_primary_login_api" %}')
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Failed to load primary account: ' + error.message);
+        });
+});
+{% endif %}
+</script>
+
+
+{% endblock %}
